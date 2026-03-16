@@ -405,7 +405,7 @@ app.put("/api/enrollment/:id/rating", async (req, res) => {
       select: { rating: true },
     });
     const avg =
-      allRatings.reduce((sum, e) => sum + (e.rating || 0), 0) /
+      allRatings.reduce((sum: number, e: any) => sum + (e.rating || 0), 0) /
       allRatings.length;
     await prisma.course.update({
       where: { id: updated.courseId },
