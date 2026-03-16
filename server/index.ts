@@ -20,6 +20,10 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+app.get("/", (req: any, res: any) => {
+  res.send("Server is running!");
+});
+
 // ─── AUTH ──────────────────────────────────────────────────────────────────
 
 app.post("/api/register", async (req: any, res: any) => {
