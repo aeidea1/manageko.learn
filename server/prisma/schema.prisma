@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password      String
+  name          String?
+  surname       String?
+  role          String         @default("student")
+  avatar        String?
+  createdAt     DateTime       @default(now())
+  enrollments   Enrollment[]
+  notifications Notification[]
+}
+
+model Course {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  skills      String[]
+  category    String?      // Соответствует разделам ExploreMenu
+  image       String?
+  rating      Float        @default(0)
+  students    Int          @default(0)
+  createdAt   DateTime     @default(now())
+  lessons     Lesson[]
+  enrollments Enrollment[]
+}
+
+model Lesson {
+  id           Int        @id @default(autoincrement())
+  courseId     Int
+  course       Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title        String
+  order        Int
+  lectureText  String?
+  practiceTask String?
+  mediaUrl     String?
+  practiceMediaUrl String?
+  documents    Document[]
+  questions    Question[]
+}
+
+model Document {
+  id        Int    @id @default(autoincrement())
+  lessonId  Int
+  lesson    Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  name      String
+  url       String // base64 или URL
+  size      String?
+}
+
+model Question {
+  id             Int     @id @default(autoincrement())
+  lessonId       Int
+  lesson         Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  text           String
+  isSingleChoice Boolean @default(true)
+  options        Json
+  correctAnswers Json    @default("[]")
+  explanation    String?
+}
+
+model Enrollment {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  progress  Int      @default(0)
+  status    String   @default("in_progress")
+  rating    Int?     // Оценка студента 1-5
+  createdAt DateTime @default(now())
+  @@unique([userId, courseId])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "course_start" | "course_complete" | "new_course" | "document"
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  courseId  Int?
+  createdAt DateTime @default(now())
+}
