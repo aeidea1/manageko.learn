@@ -8,7 +8,7 @@ import jwt from "jsonwebtoken";
 import "dotenv/config";
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 const SECRET_KEY = "manageko-super-secret";
 
 const connectionString = process.env.DATABASE_URL;
@@ -457,6 +457,6 @@ app.put("/api/notifications/:id/read", async (req: any, res: any) => {
   }
 });
 
-app.listen(PORT, () =>
-  console.log(`Сервер запущен на http://localhost:${PORT}`),
-);
+app.listen(Number(PORT), "0.0.0.0", () => {
+  console.log(`Сервер запущен на порту ${PORT}`);
+});
