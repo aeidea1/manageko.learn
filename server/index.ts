@@ -22,7 +22,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // ─── AUTH ──────────────────────────────────────────────────────────────────
 
-app.post("/api/register", async (req, res) => {
+app.post("/api/register", async (req: any, res: any) => {
   try {
     const { email, password, name, surname } = req.body;
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -40,7 +40,7 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", async (req: any, res: any) => {
   try {
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
@@ -65,7 +65,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.put("/api/profile", async (req, res) => {
+app.put("/api/profile", async (req: any, res: any) => {
   try {
     const { userId, name, surname, password, avatar } = req.body;
     const updateData: any = { name, surname };
@@ -91,7 +91,7 @@ app.put("/api/profile", async (req, res) => {
 
 // ─── COURSES ───────────────────────────────────────────────────────────────
 
-app.get("/api/courses", async (req, res) => {
+app.get("/api/courses", async (req: any, res: any) => {
   try {
     const { category, search } = req.query;
     let where: any = {};
@@ -155,7 +155,7 @@ app.get("/api/courses", async (req, res) => {
   }
 });
 
-app.get("/api/courses/:id", async (req, res) => {
+app.get("/api/courses/:id", async (req: any, res: any) => {
   try {
     const course = await prisma.course.findUnique({
       where: { id: Number(req.params.id) },
@@ -173,7 +173,7 @@ app.get("/api/courses/:id", async (req, res) => {
   }
 });
 
-app.post("/api/courses", async (req, res) => {
+app.post("/api/courses", async (req: any, res: any) => {
   try {
     const { title, description, skills, category, image } = req.body;
     const newCourse = await prisma.course.create({
@@ -195,7 +195,7 @@ app.post("/api/courses", async (req, res) => {
   }
 });
 
-app.put("/api/courses/:id", async (req, res) => {
+app.put("/api/courses/:id", async (req: any, res: any) => {
   try {
     const { title, description, skills, category, image } = req.body;
     const updated = await prisma.course.update({
@@ -214,7 +214,7 @@ app.put("/api/courses/:id", async (req, res) => {
   }
 });
 
-app.delete("/api/courses/:id", async (req, res) => {
+app.delete("/api/courses/:id", async (req: any, res: any) => {
   try {
     const id = Number(req.params.id);
     // Сначала удаляем enrollment'ы (нет каскада в схеме)
@@ -229,7 +229,7 @@ app.delete("/api/courses/:id", async (req, res) => {
 
 // ─── LESSONS ───────────────────────────────────────────────────────────────
 
-app.post("/api/courses/:courseId/lessons", async (req, res) => {
+app.post("/api/courses/:courseId/lessons", async (req: any, res: any) => {
   try {
     const courseId = Number(req.params.courseId);
     const { lessons } = req.body;
@@ -298,7 +298,7 @@ app.post("/api/courses/:courseId/lessons", async (req, res) => {
 
 // ─── ENROLLMENT ────────────────────────────────────────────────────────────
 
-app.post("/api/enroll", async (req, res) => {
+app.post("/api/enroll", async (req: any, res: any) => {
   try {
     const { userId, courseId } = req.body;
     const uId = Number(userId);
@@ -338,7 +338,7 @@ app.post("/api/enroll", async (req, res) => {
   }
 });
 
-app.get("/api/my-courses/:userId", async (req, res) => {
+app.get("/api/my-courses/:userId", async (req: any, res: any) => {
   try {
     const enrollments = await prisma.enrollment.findMany({
       where: { userId: Number(req.params.userId) },
@@ -360,7 +360,7 @@ app.get("/api/my-courses/:userId", async (req, res) => {
   }
 });
 
-app.put("/api/enrollment/:id/progress", async (req, res) => {
+app.put("/api/enrollment/:id/progress", async (req: any, res: any) => {
   try {
     const { progress, status } = req.body;
     const updated = await prisma.enrollment.update({
@@ -389,7 +389,7 @@ app.put("/api/enrollment/:id/progress", async (req, res) => {
 });
 
 // Оценка курса студентом
-app.put("/api/enrollment/:id/rating", async (req, res) => {
+app.put("/api/enrollment/:id/rating", async (req: any, res: any) => {
   try {
     const { rating } = req.body;
     const enrollmentId = Number(req.params.id);
@@ -420,7 +420,7 @@ app.put("/api/enrollment/:id/rating", async (req, res) => {
 
 // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
 
-app.get("/api/notifications/:userId", async (req, res) => {
+app.get("/api/notifications/:userId", async (req: any, res: any) => {
   try {
     const notifications = await prisma.notification.findMany({
       where: { userId: Number(req.params.userId) },
@@ -433,7 +433,7 @@ app.get("/api/notifications/:userId", async (req, res) => {
   }
 });
 
-app.put("/api/notifications/:userId/read-all", async (req, res) => {
+app.put("/api/notifications/:userId/read-all", async (req: any, res: any) => {
   try {
     await prisma.notification.updateMany({
       where: { userId: Number(req.params.userId), isRead: false },
@@ -445,7 +445,7 @@ app.put("/api/notifications/:userId/read-all", async (req, res) => {
   }
 });
 
-app.put("/api/notifications/:id/read", async (req, res) => {
+app.put("/api/notifications/:id/read", async (req: any, res: any) => {
   try {
     await prisma.notification.update({
       where: { id: Number(req.params.id) },
