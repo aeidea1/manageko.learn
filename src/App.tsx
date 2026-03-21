@@ -11,16 +11,9 @@ import { CoursePlayerPage } from "./pages/CoursePlayerPage";
 import { CoursePage } from "./pages/CoursePage";
 import { LandingPage } from "./pages/LandingPage";
 
-const GuestRoute = ({
-  children,
-  landing = false,
-}: {
-  children: React.ReactNode;
-  landing?: boolean;
-}) => {
+const GuestRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem("token");
   if (token) return <Navigate to="/dashboard" replace />;
-  // Для лендинга — показываем гостям, для /login /register — тоже
   return <>{children}</>;
 };
 
@@ -130,7 +123,7 @@ function App() {
           <Route
             path="/"
             element={
-              <GuestRoute landing>
+              <GuestRoute>
                 <LandingPage />
               </GuestRoute>
             }
