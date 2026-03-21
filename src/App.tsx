@@ -9,10 +9,19 @@ import { CourseManagerPage } from "./pages/CourseManagerPage";
 import { CourseEditorPage } from "./pages/CourseEditorPage";
 import { CoursePlayerPage } from "./pages/CoursePlayerPage";
 import { CoursePage } from "./pages/CoursePage";
+import { LandingPage } from "./pages/LandingPage";
 
-const GuestRoute = ({ children }: { children: React.ReactNode }) => {
+const GuestRoute = ({
+  children,
+  landing = false,
+}: {
+  children: React.ReactNode;
+  landing?: boolean;
+}) => {
   const token = localStorage.getItem("token");
-  return token ? <Navigate to="/dashboard" replace /> : <>{children}</>;
+  if (token) return <Navigate to="/dashboard" replace />;
+  // Для лендинга — показываем гостям, для /login /register — тоже
+  return <>{children}</>;
 };
 
 const ProtectedRoute = ({
@@ -118,7 +127,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/"
+            element={
+              <GuestRoute landing>
+                <LandingPage />
+              </GuestRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
