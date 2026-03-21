@@ -149,7 +149,11 @@ app.get("/api/courses", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -166,7 +170,11 @@ app.get("/api/courses/:id", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -208,7 +216,11 @@ app.put("/api/courses/:id", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -253,10 +265,24 @@ app.post("/api/courses/:courseId/lessons", async (req: any, res: any) => {
       };
       const lesson = await prisma.lesson.create({ data: lessonData });
 
-      // Документы
+      // Документы лекции
       if (l.documents && l.documents.length > 0) {
         for (const doc of l.documents) {
           await prisma.document.create({
+            data: {
+              lessonId: lesson.id,
+              name: doc.name,
+              url: doc.url,
+              size: doc.size || null,
+            },
+          });
+        }
+      }
+
+      // Документы практики
+      if (l.practiceDocuments && l.practiceDocuments.length > 0) {
+        for (const doc of l.practiceDocuments) {
+          await (prisma as any).practiceDocument.create({
             data: {
               lessonId: lesson.id,
               name: doc.name,
@@ -289,7 +315,11 @@ app.post("/api/courses/:courseId/lessons", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -351,7 +381,11 @@ app.get("/api/my-courses/:userId", async (req: any, res: any) => {
           include: {
             lessons: {
               orderBy: { order: "asc" },
-              include: { questions: true, documents: true },
+              include: {
+                questions: true,
+                documents: true,
+                practiceDocuments: true,
+              },
             },
           },
         },
@@ -373,17 +407,26 @@ app.put("/api/enrollment/:id/progress", async (req: any, res: any) => {
       include: { course: true },
     });
 
-    // Уведомление о завершении курса
+    // Уведомление о завершении — только если раньше не было
     if (status === "completed") {
-      await prisma.notification.create({
-        data: {
+      const existingNotif = await (prisma as any).notification.findFirst({
+        where: {
           userId: updated.userId,
-          type: "course_complete",
-          title: "Курс пройден!",
-          message: `Поздравляем! Вы завершили курс «${updated.course.title}».`,
           courseId: updated.courseId,
+          type: "course_complete",
         },
       });
+      if (!existingNotif) {
+        await (prisma as any).notification.create({
+          data: {
+            userId: updated.userId,
+            type: "course_complete",
+            title: "Курс пройден!",
+            message: `Поздравляем! Вы завершили курс «${updated.course.title}».`,
+            courseId: updated.courseId,
+          },
+        });
+      }
     }
 
     res.json(updated);

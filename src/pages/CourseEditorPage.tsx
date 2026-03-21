@@ -52,6 +52,7 @@ interface Lesson {
   mediaUrl?: string | null;
   practiceMediaUrl?: string | null;
   documents: Document[];
+  practiceDocuments: Document[];
   questions: Question[];
 }
 
@@ -121,6 +122,7 @@ export const CourseEditorPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const practiceFileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const practiceDocInputRef = useRef<HTMLInputElement>(null);
   const lectureTextRef = useRef<HTMLTextAreaElement>(null);
 
   const [activeTab, setActiveTab] = useState<EditorTab>("lecture");
@@ -140,6 +142,7 @@ export const CourseEditorPage = () => {
         mediaUrl: l.mediaUrl || null,
         practiceMediaUrl: l.practiceMediaUrl || null,
         documents: l.documents || [],
+        practiceDocuments: l.practiceDocuments || [],
         questions: (l.questions || []).map((q: any) => ({
           id: q.id,
           text: q.text,
@@ -165,6 +168,7 @@ export const CourseEditorPage = () => {
       mediaUrl: null,
       practiceMediaUrl: null,
       documents: [],
+      practiceDocuments: [],
       questions: [],
     };
     setLessons([...lessons, newLesson]);
@@ -249,6 +253,49 @@ export const CourseEditorPage = () => {
       lessons.map((l) =>
         l.id === activeLessonId
           ? { ...l, documents: l.documents.filter((d) => d.id !== docId) }
+          : l,
+      ),
+    );
+  };
+
+  const handlePracticeDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !activeLessonId) return;
+    Array.from(e.target.files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const doc: Document = {
+          id: Date.now() + Math.random(),
+          name: file.name,
+          url: event.target?.result as string,
+          size:
+            file.size > 1024 * 1024
+              ? `${(file.size / 1024 / 1024).toFixed(1)} МБ`
+              : `${Math.round(file.size / 1024)} КБ`,
+        };
+        setLessons(
+          lessons.map((l) =>
+            l.id === activeLessonId
+              ? { ...l, practiceDocuments: [...l.practiceDocuments, doc] }
+              : l,
+          ),
+        );
+      };
+      reader.readAsDataURL(file);
+    });
+    toast.success("Документ добавлен в практику!");
+  };
+
+  const removePracticeDoc = (docId: number) => {
+    if (!currentLesson) return;
+    setLessons(
+      lessons.map((l) =>
+        l.id === activeLessonId
+          ? {
+              ...l,
+              practiceDocuments: l.practiceDocuments.filter(
+                (d) => d.id !== docId,
+              ),
+            }
           : l,
       ),
     );
@@ -570,11 +617,20 @@ export const CourseEditorPage = () => {
                         className="w-full border border-dashed border-gray-300 rounded-md bg-gray-50 flex flex-col items-center justify-center min-h-[140px] cursor-pointer hover:bg-gray-100 overflow-hidden"
                       >
                         {currentLesson.mediaUrl ? (
-                          <img
-                            src={currentLesson.mediaUrl}
-                            className="w-full h-full object-cover max-h-[260px]"
-                            alt="Media"
-                          />
+                          currentLesson.mediaUrl.startsWith("data:video") ? (
+                            <video
+                              src={currentLesson.mediaUrl}
+                              className="w-full max-h-[260px] object-cover"
+                              controls
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <img
+                              src={currentLesson.mediaUrl}
+                              className="w-full h-full object-cover max-h-[260px]"
+                              alt="Media"
+                            />
+                          )
                         ) : (
                           <>
                             <ImageIcon
@@ -717,11 +773,22 @@ export const CourseEditorPage = () => {
                         className="w-full border border-dashed border-gray-300 rounded-md bg-gray-50 flex flex-col items-center justify-center min-h-[140px] cursor-pointer hover:bg-gray-100 overflow-hidden"
                       >
                         {currentLesson.practiceMediaUrl ? (
-                          <img
-                            src={currentLesson.practiceMediaUrl}
-                            className="w-full h-full object-cover max-h-[260px]"
-                            alt="Practice media"
-                          />
+                          currentLesson.practiceMediaUrl.startsWith(
+                            "data:video",
+                          ) ? (
+                            <video
+                              src={currentLesson.practiceMediaUrl}
+                              className="w-full max-h-[260px] object-cover"
+                              controls
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <img
+                              src={currentLesson.practiceMediaUrl}
+                              className="w-full h-full object-cover max-h-[260px]"
+                              alt="Practice media"
+                            />
+                          )
                         ) : (
                           <>
                             <ImageIcon
@@ -755,23 +822,31 @@ export const CourseEditorPage = () => {
                       )}
                     </div>
 
-                    {/* Документы практики — те же что в лекции */}
+                    {/* Документы практики — отдельные от лекции */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm font-bold text-black flex items-center gap-2">
-                          <FileText size={15} className="text-[#0056D2]" />{" "}
+                          <FileText size={15} className="text-[#0056D2]" />
                           Материалы к практике
                         </h3>
                         <button
-                          onClick={() => docInputRef.current?.click()}
+                          onClick={() => practiceDocInputRef.current?.click()}
                           className="flex items-center gap-1 text-xs text-[#0056D2] font-bold hover:underline"
                         >
                           <Upload size={13} /> Добавить файл
                         </button>
+                        <input
+                          type="file"
+                          ref={practiceDocInputRef}
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,image/*"
+                          multiple
+                          onChange={handlePracticeDocUpload}
+                        />
                       </div>
-                      {currentLesson.documents.length === 0 ? (
+                      {currentLesson.practiceDocuments.length === 0 ? (
                         <div
-                          onClick={() => docInputRef.current?.click()}
+                          onClick={() => practiceDocInputRef.current?.click()}
                           className="border border-dashed border-gray-200 rounded-lg p-5 text-center cursor-pointer hover:bg-gray-50"
                         >
                           <p className="text-xs text-gray-400">
@@ -780,7 +855,7 @@ export const CourseEditorPage = () => {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {currentLesson.documents.map((doc) => (
+                          {currentLesson.practiceDocuments.map((doc) => (
                             <div
                               key={doc.id}
                               className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg"
@@ -802,7 +877,7 @@ export const CourseEditorPage = () => {
                                 )}
                               </div>
                               <button
-                                onClick={() => removeDoc(doc.id)}
+                                onClick={() => removePracticeDoc(doc.id)}
                                 className="text-gray-400 hover:text-red-500 p-1"
                               >
                                 <X size={15} />
@@ -810,7 +885,7 @@ export const CourseEditorPage = () => {
                             </div>
                           ))}
                           <button
-                            onClick={() => docInputRef.current?.click()}
+                            onClick={() => practiceDocInputRef.current?.click()}
                             className="w-full text-xs text-[#0056D2] hover:underline py-2 border border-dashed border-blue-200 rounded-lg hover:bg-blue-50"
                           >
                             + Добавить ещё

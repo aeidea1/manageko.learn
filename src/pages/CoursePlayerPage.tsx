@@ -62,6 +62,7 @@ export const CoursePlayerPage = () => {
   const questions = currentLesson?.questions || [];
   const activeQuestion = questions[activeQuestionIndex] || null;
   const documents = currentLesson?.documents || [];
+  const practiceDocuments = currentLesson?.practiceDocuments || [];
 
   useEffect(() => {
     if (!course?.id || !user?.id || enrollmentId) return;
@@ -663,7 +664,30 @@ export const CoursePlayerPage = () => {
                         </div>
                       </div>
                     )}
-                    {/* Кнопка перехода — без блока загрузки работы */}
+                    {/* Документы практики */}
+                    {practiceDocuments.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                          <FileText size={15} className="text-[#0056D2]" /> Материалы к практике
+                        </h3>
+                        <div className="space-y-2">
+                          {practiceDocuments.map((doc: any) => (
+                            <a key={doc.id} href={doc.url} download={doc.name}
+                              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-[#0056D2] hover:bg-blue-50 transition-all group">
+                              <div className="w-9 h-9 bg-blue-100 rounded-md flex items-center justify-center shrink-0">
+                                <FileText size={17} className="text-[#0056D2]" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold truncate">{doc.name}</p>
+                                {doc.size && <p className="text-xs text-gray-400">{doc.size}</p>}
+                              </div>
+                              <Download size={15} className="text-gray-400 group-hover:text-[#0056D2] shrink-0" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Кнопка перехода */}
                     <div className="flex items-center gap-4 flex-wrap">
                       <Button
                         onClick={handleNextLesson}
