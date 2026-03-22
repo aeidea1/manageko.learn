@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Trash2,
+  Bell,
   Search,
   BarChart2,
   Settings,
@@ -16,7 +17,7 @@ import {
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
-type AdminTab = "stats" | "users" | "courses";
+type AdminTab = "stats" | "users" | "notify";
 
 export const AdminPage = () => {
   const navigate = useNavigate();
@@ -105,10 +106,35 @@ export const AdminPage = () => {
       .includes(searchUser.toLowerCase()),
   );
 
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifMessage, setNotifMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendNotification = async () => {
+    if (!notifTitle.trim() || !notifMessage.trim()) {
+      toast.error("Заполните заголовок и текст уведомления");
+      return;
+    }
+    setIsSending(true);
+    try {
+      await api.post("/admin/notify-all", {
+        title: notifTitle,
+        message: notifMessage,
+      });
+      toast.success("Уведомление отправлено всем пользователям!");
+      setNotifTitle("");
+      setNotifMessage("");
+    } catch {
+      toast.error("Ошибка при отправке");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const TABS = [
     { id: "stats" as AdminTab, label: "Статистика", icon: BarChart2 },
     { id: "users" as AdminTab, label: "Пользователи", icon: Users },
-    { id: "courses" as AdminTab, label: "Курсы", icon: BookOpen },
+    { id: "notify" as AdminTab, label: "Уведомления", icon: Bell },
   ];
 
   return (
@@ -554,31 +580,50 @@ export const AdminPage = () => {
               </div>
             )}
 
-            {/* КУРСЫ */}
-            {tab === "courses" && (
+            {/* УВЕДОМЛЕНИЯ */}
+            {tab === "notify" && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h1 className="text-2xl font-black text-black">
-                    Управление курсами
-                  </h1>
-                  <Link
-                    to="/manager"
-                    className="flex items-center gap-2 bg-[#0056D2] text-white text-sm font-bold px-5 py-2.5 rounded-sm hover:bg-blue-700 transition-colors"
-                  >
-                    <BookOpen size={15} /> Открыть редактор
-                  </Link>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
-                  <BookOpen size={40} className="text-gray-200 mx-auto mb-4" />
-                  <p className="text-gray-500 mb-4 text-sm">
-                    Для управления курсами используйте полноценный редактор
+                <h1 className="text-2xl font-black text-black">
+                  Рассылка уведомлений
+                </h1>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+                  <p className="text-sm text-gray-500">
+                    Отправьте уведомление всем зарегистрированным пользователям
+                    платформы. Оно появится в колоколе уведомлений.
                   </p>
-                  <Link
-                    to="/manager"
-                    className="inline-flex items-center gap-2 bg-[#0056D2] text-white text-sm font-bold px-6 py-3 rounded-sm hover:bg-blue-700 transition-colors"
-                  >
-                    Перейти в менеджер курсов <ChevronRight size={15} />
-                  </Link>
+                  <div>
+                    <p className="text-xs font-bold mb-2">Заголовок</p>
+                    <input
+                      value={notifTitle}
+                      onChange={(e) => setNotifTitle(e.target.value)}
+                      placeholder="Например: Новые курсы уже доступны!"
+                      className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-[#0056D2] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold mb-2">Текст сообщения</p>
+                    <textarea
+                      value={notifMessage}
+                      onChange={(e) => setNotifMessage(e.target.value)}
+                      placeholder="Расскажите пользователям о новостях платформы..."
+                      rows={4}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-[#0056D2] resize-none transition-colors"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-400">
+                      Уведомление получат все пользователи (
+                      {stats?.users || "..."} чел.)
+                    </p>
+                    <button
+                      onClick={handleSendNotification}
+                      disabled={isSending}
+                      className="flex items-center gap-2 bg-[#0056D2] text-white text-sm font-bold px-6 py-2.5 rounded-sm hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                    >
+                      <Bell size={15} />
+                      {isSending ? "Отправка..." : "Отправить всем"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

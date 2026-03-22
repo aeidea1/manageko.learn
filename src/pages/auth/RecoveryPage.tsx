@@ -100,15 +100,12 @@ export const RecoveryPage = () => {
           >
             {isLoading ? "Отправка..." : "Отправить ссылку для сброса"}
           </Button>
-          <p className="text-center text-sm text-gray-500">
+          <div className="text-xs text-black text-center">
             Вспомнили пароль?{" "}
-            <Link
-              to="/login"
-              className="text-[#0056D2] font-bold hover:underline"
-            >
+            <Link to="/login" className="font-bold hover:text-[#0056D2]">
               Войти
             </Link>
-          </p>
+          </div>
         </div>
       </AuthLayout>
     );

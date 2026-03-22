@@ -32,6 +32,8 @@ const notifIcon = (type: string) => {
     return <CheckCircle2 size={16} className="text-green-500 shrink-0" />;
   if (type === "document")
     return <FileText size={16} className="text-orange-500 shrink-0" />;
+  if (type === "announcement")
+    return <Bell size={16} className="text-purple-500 shrink-0" />;
   return <Bell size={16} className="text-gray-400 shrink-0" />;
 };
 
