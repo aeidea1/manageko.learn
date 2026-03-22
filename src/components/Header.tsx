@@ -181,7 +181,7 @@ export const Header = () => {
           <div className="flex items-center gap-1 md:gap-3 shrink-0">
             {isAdmin && (
               <NavLink
-                to="/manager"
+                to="/admin"
                 title="Менеджер курсов"
                 className={({ isActive }) =>
                   `flex items-center justify-center w-9 h-9 transition-colors ${isActive ? "text-[#0056D2]" : "text-gray-600 hover:text-[#0056D2]"}`

@@ -11,6 +11,7 @@ import { CoursePlayerPage } from "./pages/CoursePlayerPage";
 import { CoursePage } from "./pages/CoursePage";
 import { LandingPage } from "./pages/LandingPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { AdminPage } from "./pages/AdminPage";
 
 const GuestRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem("token");
@@ -86,6 +87,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyLearningPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPage />
               </ProtectedRoute>
             }
           />
