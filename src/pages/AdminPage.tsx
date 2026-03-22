@@ -621,7 +621,7 @@ export const AdminPage = () => {
                       className="flex items-center gap-2 bg-[#0056D2] text-white text-sm font-bold px-6 py-2.5 rounded-sm hover:bg-blue-700 disabled:opacity-60 transition-colors"
                     >
                       <Bell size={15} />
-                      {isSending ? "Отправка..." : "Отправить всем"}
+                      {isSending ? "Отправка..." : "Отправить"}
                     </button>
                   </div>
                 </div>
