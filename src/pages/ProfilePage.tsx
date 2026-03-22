@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
+import { ProfileModal } from "../components/ProfileModal";
 import { Link, useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -94,6 +95,7 @@ export const ProfilePage = () => {
 
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const jsDay = new Date().getDay();
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1;
@@ -154,6 +156,7 @@ export const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
+      <ProfileModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} />
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-8">
         {/* Хлебные крошки */}
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
@@ -222,7 +225,7 @@ export const ProfilePage = () => {
               </div>
 
               <button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => setIsEditOpen(true)}
                 className="mt-5 w-full text-sm font-bold text-[#0056D2] border border-[#0056D2] py-2.5 rounded-sm hover:bg-blue-50 transition-colors"
               >
                 Редактировать профиль

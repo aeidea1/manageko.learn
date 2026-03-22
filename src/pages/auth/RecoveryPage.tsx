@@ -4,21 +4,15 @@ import { AuthLayout } from "../../layouts/AuthLayout";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { api } from "../../lib/api";
-import { CheckCircle2, Mail, Lock } from "lucide-react";
 
 export const RecoveryPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
 
-  // Шаг 1: ввод email
-  // Шаг 2: письмо отправлено
-  // Шаг 3: ввод нового пароля (если есть token в URL)
-  // Шаг 4: успех
   const [step, setStep] = useState<"email" | "sent" | "reset" | "done">(
     token ? "reset" : "email",
   );
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -26,7 +20,6 @@ export const RecoveryPage = () => {
   const [error, setError] = useState("");
   const [tokenEmail, setTokenEmail] = useState("");
 
-  // Проверяем токен при загрузке
   useEffect(() => {
     if (!token) return;
     api
@@ -87,29 +80,19 @@ export const RecoveryPage = () => {
         title="Восстановление пароля"
         subtitle="Введите email от вашего аккаунта — мы отправим ссылку для сброса."
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-sm">
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-sm text-left">
               {error}
             </div>
           )}
-          <div>
-            <p className="text-xs font-bold mb-2">Email</p>
-            <div className="relative">
-              <Mail
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRequestReset()}
-                placeholder="your@email.com"
-                className="pl-9"
-              />
-            </div>
-          </div>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleRequestReset()}
+            placeholder="Введите свой email адрес"
+          />
           <Button
             onClick={handleRequestReset}
             disabled={isLoading}
@@ -133,87 +116,63 @@ export const RecoveryPage = () => {
   // ШАГ 2 — письмо отправлено
   if (step === "sent")
     return (
-      <AuthLayout title="Письмо отправлено" subtitle="">
-        <div className="text-center space-y-6">
-          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
-            <Mail size={28} className="text-[#0056D2]" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Мы отправили ссылку для сброса пароля на{" "}
-              <strong className="text-black">{email}</strong>. Проверьте папку
-              «Входящие» и «Спам».
-            </p>
-            <p className="text-xs text-gray-400 mt-2">
-              Ссылка действительна 15 минут.
-            </p>
-          </div>
+      <AuthLayout
+        title="Письмо отправлено"
+        subtitle={`Мы отправили ссылку на ${email}. Проверьте папку «Входящие» и «Спам».`}
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-gray-400 text-center">
+            Ссылка действительна 15 минут.
+          </p>
           <Button
-            onClick={() => setStep("email")}
-            className="w-full py-3 text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200"
+            onClick={() => {
+              setStep("email");
+              setEmail("");
+            }}
+            className="w-full py-3 text-sm font-bold bg-white text-[#0056D2] border border-[#0056D2] hover:bg-blue-50"
           >
             Отправить повторно
           </Button>
-          <Link
-            to="/login"
-            className="block text-sm text-[#0056D2] hover:underline font-bold"
-          >
-            ← Вернуться на страницу входа
-          </Link>
+          <p className="text-center text-sm text-gray-500">
+            <Link
+              to="/login"
+              className="text-[#0056D2] font-bold hover:underline"
+            >
+              ← Вернуться на страницу входа
+            </Link>
+          </p>
         </div>
       </AuthLayout>
     );
 
-  // ШАГ 3 — ввод нового пароля
+  // ШАГ 3 — новый пароль
   if (step === "reset")
     return (
       <AuthLayout
         title="Новый пароль"
         subtitle={
-          tokenEmail
-            ? `Аккаунт: ${tokenEmail}`
-            : "Придумайте новый пароль для вашего аккаунта."
+          tokenEmail ? `Аккаунт: ${tokenEmail}` : "Придумайте новый пароль."
         }
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-sm">
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-sm text-left">
               {error}
             </div>
           )}
-          <div>
-            <p className="text-xs font-bold mb-2">Новый пароль</p>
-            <div className="relative">
-              <Lock
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Минимум 6 символов"
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-bold mb-2">Повторите пароль</p>
-            <div className="relative">
-              <Lock
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <Input
-                type="password"
-                value={passwordConfirm}
-                onChange={(e) => setPasswordConfirm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
-                placeholder="Повторите пароль"
-                className="pl-9"
-              />
-            </div>
-          </div>
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Новый пароль (минимум 6 символов)"
+          />
+          <Input
+            type="password"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+            placeholder="Повторите пароль"
+          />
           <Button
             onClick={handleResetPassword}
             disabled={isLoading}
@@ -227,21 +186,16 @@ export const RecoveryPage = () => {
 
   // ШАГ 4 — успех
   return (
-    <AuthLayout title="Пароль изменён" subtitle="">
-      <div className="text-center space-y-6">
-        <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle2 size={28} className="text-green-500" />
-        </div>
-        <p className="text-sm text-gray-600">
-          Ваш пароль успешно изменён. Теперь вы можете войти с новым паролем.
-        </p>
-        <Button
-          onClick={() => navigate("/login")}
-          className="w-full py-3 text-sm font-bold"
-        >
-          Войти в аккаунт
-        </Button>
-      </div>
+    <AuthLayout
+      title="Пароль изменён"
+      subtitle="Ваш пароль успешно изменён. Теперь вы можете войти с новым паролем."
+    >
+      <Button
+        onClick={() => navigate("/login")}
+        className="w-full py-3 text-sm font-bold"
+      >
+        Войти в аккаунт
+      </Button>
     </AuthLayout>
   );
 };

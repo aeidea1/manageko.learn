@@ -8,8 +8,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Trash2,
-  Shield,
-  User,
   Search,
   BarChart2,
   Settings,
