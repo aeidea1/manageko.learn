@@ -461,18 +461,18 @@ app.put("/api/notifications/:id/read", async (req: any, res: any) => {
   }
 });
 
-
 // ─── ADMIN ─────────────────────────────────────────────────────────────────
 
 // Статистика платформы
 app.get("/api/admin/stats", async (req: any, res: any) => {
   try {
-    const [users, courses, enrollments, completedEnrollments] = await Promise.all([
-      prisma.user.count(),
-      prisma.course.count(),
-      prisma.enrollment.count(),
-      prisma.enrollment.count({ where: { status: "completed" } }),
-    ]);
+    const [users, courses, enrollments, completedEnrollments] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.course.count(),
+        prisma.enrollment.count(),
+        prisma.enrollment.count({ where: { status: "completed" } }),
+      ]);
     res.json({ users, courses, enrollments, completedEnrollments });
   } catch {
     res.status(500).json({ error: "Ошибка" });
@@ -485,8 +485,12 @@ app.get("/api/admin/users", async (req: any, res: any) => {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       select: {
-        id: true, email: true, name: true, surname: true,
-        role: true, createdAt: true,
+        id: true,
+        email: true,
+        name: true,
+        surname: true,
+        role: true,
+        createdAt: true,
         _count: { select: { enrollments: true } },
       },
     });
@@ -516,8 +520,12 @@ app.put("/api/admin/users/:id/role", async (req: any, res: any) => {
 // Удалить пользователя
 app.delete("/api/admin/users/:id", async (req: any, res: any) => {
   try {
-    await prisma.enrollment.deleteMany({ where: { userId: Number(req.params.id) } });
-    await (prisma as any).notification.deleteMany({ where: { userId: Number(req.params.id) } });
+    await prisma.enrollment.deleteMany({
+      where: { userId: Number(req.params.id) },
+    });
+    await (prisma as any).notification.deleteMany({
+      where: { userId: Number(req.params.id) },
+    });
     await prisma.user.delete({ where: { id: Number(req.params.id) } });
     res.json({ success: true });
   } catch {
@@ -525,19 +533,19 @@ app.delete("/api/admin/users/:id", async (req: any, res: any) => {
   }
 });
 
-
 // Рассылка уведомлений всем пользователям
 app.post("/api/admin/notify-all", async (req: any, res: any) => {
   try {
     const { title, message } = req.body;
-    if (!title || !message) return res.status(400).json({ error: "Заполните все поля" });
+    if (!title || !message)
+      return res.status(400).json({ error: "Заполните все поля" });
     const users = await prisma.user.findMany({ select: { id: true } });
     await Promise.all(
-      users.map(u =>
+      users.map((u) =>
         (prisma as any).notification.create({
           data: { userId: u.id, type: "announcement", title, message },
-        })
-      )
+        }),
+      ),
     );
     res.json({ sent: users.length });
   } catch {
@@ -545,6 +553,6 @@ app.post("/api/admin/notify-all", async (req: any, res: any) => {
   }
 });
 
-
+app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`Сервер запущен на порту ${PORT}`);
 });

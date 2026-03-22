@@ -402,7 +402,7 @@ export const AdminPage = () => {
                               <ChevronRight size={14} />
                             </Link>
                             <button
-                              onClick={() => setTab("courses")}
+                              onClick={() => setTab("notify")}
                               className="w-full flex items-center justify-between text-sm text-gray-600 hover:text-[#0056D2] py-2"
                             >
                               <span className="flex items-center gap-2">
