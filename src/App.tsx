@@ -10,6 +10,7 @@ import { CourseEditorPage } from "./pages/CourseEditorPage";
 import { CoursePlayerPage } from "./pages/CoursePlayerPage";
 import { CoursePage } from "./pages/CoursePage";
 import { LandingPage } from "./pages/LandingPage";
+import { ProfilePage } from "./pages/ProfilePage";
 
 const GuestRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem("token");
@@ -85,6 +86,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyLearningPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />

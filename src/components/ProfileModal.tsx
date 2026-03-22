@@ -187,6 +187,16 @@ export const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
               Выйти из аккаунта
             </button>
           </div>
+          {/* Кнопка перехода на страницу профиля */}
+          <button
+            onClick={() => {
+              onClose();
+              navigate("/profile");
+            }}
+            className="w-full flex items-center justify-center gap-2 text-[13px] font-bold text-gray-600 border border-gray-200 py-2.5 rounded-sm hover:bg-gray-50 transition-colors"
+          >
+            Открыть страницу профиля →
+          </button>
           <p className="text-[11px] text-center text-gray-400 mt-6 leading-relaxed">
             Чтобы удалить аккаунт, напишите администратору на{" "}
             <a
