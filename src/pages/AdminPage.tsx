@@ -164,10 +164,34 @@ export const AdminPage = () => {
           <span className="text-gray-600">Администрирование</span>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* БОКОВАЯ НАВИГАЦИЯ */}
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* НАВИГАЦИЯ — горизонтальная на мобиле, вертикальная на десктопе */}
           <aside className="lg:w-56 shrink-0">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
+            {/* Мобиль */}
+            <div className="lg:hidden flex gap-2 overflow-x-auto pb-1">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors shrink-0 ${
+                    tab === t.id
+                      ? "bg-[#0056D2] text-white"
+                      : "bg-white text-gray-600 border border-gray-200"
+                  }`}
+                >
+                  <t.icon size={15} /> {t.label}
+                </button>
+              ))}
+              <Link
+                to="/manager"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap bg-white text-gray-600 border border-gray-200 shrink-0"
+              >
+                <BookOpen size={15} /> Редактор
+              </Link>
+            </div>
+
+            {/* Десктоп */}
+            <div className="hidden lg:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
               <div className="p-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-[#0056D2] rounded-lg flex items-center justify-center">
@@ -400,74 +424,128 @@ export const AdminPage = () => {
                       Пользователи не найдены
                     </div>
                   ) : (
-                    <div className="divide-y divide-gray-100">
-                      {/* Заголовок таблицы */}
-                      <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        <div className="col-span-5">Пользователь</div>
-                        <div className="col-span-2 text-center">Курсов</div>
-                        <div className="col-span-3">Роль</div>
-                        <div className="col-span-2 text-right">Действия</div>
-                      </div>
-                      {filteredUsers.map((u) => (
-                        <div
-                          key={u.id}
-                          className="grid grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-gray-50/50 transition-colors"
-                        >
-                          <div className="col-span-5 flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-full bg-[#00205C] text-white flex items-center justify-center text-sm font-bold shrink-0">
-                              {u.name?.[0]?.toUpperCase() ||
-                                u.email[0].toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold truncate">
-                                {[u.name, u.surname]
-                                  .filter(Boolean)
-                                  .join(" ") || "—"}
-                              </p>
-                              <p className="text-xs text-gray-400 truncate">
-                                {u.email}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-center">
-                            <span className="text-sm font-bold text-gray-700">
-                              {u._count?.enrollments || 0}
-                            </span>
-                          </div>
-                          <div className="col-span-3">
-                            <select
-                              value={u.role}
-                              onChange={(e) =>
-                                handleRoleChange(u.id, e.target.value)
-                              }
-                              disabled={u.id === currentUser?.id}
-                              className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none cursor-pointer transition-colors ${
-                                u.role === "admin"
-                                  ? "bg-purple-50 text-purple-700 border-purple-200"
-                                  : "bg-blue-50 text-[#0056D2] border-blue-200"
-                              } ${u.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : ""}`}
-                            >
-                              <option value="student">Студент</option>
-                              <option value="admin">Администратор</option>
-                            </select>
-                          </div>
-                          <div className="col-span-2 flex justify-end">
-                            {u.id !== currentUser?.id ? (
-                              <button
-                                onClick={() => setDeleteModal(u)}
-                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            ) : (
-                              <span className="text-xs text-gray-300 italic">
-                                Вы
-                              </span>
-                            )}
-                          </div>
+                    <>
+                      {/* Десктоп — таблица */}
+                      <div className="hidden md:block divide-y divide-gray-100">
+                        <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                          <div className="col-span-5">Пользователь</div>
+                          <div className="col-span-2 text-center">Курсов</div>
+                          <div className="col-span-3">Роль</div>
+                          <div className="col-span-2 text-right">Действия</div>
                         </div>
-                      ))}
-                    </div>
+                        {filteredUsers.map((u) => (
+                          <div
+                            key={u.id}
+                            className="grid grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-gray-50/50 transition-colors"
+                          >
+                            <div className="col-span-5 flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-full bg-[#00205C] text-white flex items-center justify-center text-sm font-bold shrink-0">
+                                {u.name?.[0]?.toUpperCase() ||
+                                  u.email[0].toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold truncate">
+                                  {[u.name, u.surname]
+                                    .filter(Boolean)
+                                    .join(" ") || "—"}
+                                </p>
+                                <p className="text-xs text-gray-400 truncate">
+                                  {u.email}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="col-span-2 text-center">
+                              <span className="text-sm font-bold text-gray-700">
+                                {u._count?.enrollments || 0}
+                              </span>
+                            </div>
+                            <div className="col-span-3">
+                              <select
+                                value={u.role}
+                                onChange={(e) =>
+                                  handleRoleChange(u.id, e.target.value)
+                                }
+                                disabled={u.id === currentUser?.id}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none cursor-pointer transition-colors ${
+                                  u.role === "admin"
+                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    : "bg-blue-50 text-[#0056D2] border-blue-200"
+                                } ${u.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                              >
+                                <option value="student">Студент</option>
+                                <option value="admin">Администратор</option>
+                              </select>
+                            </div>
+                            <div className="col-span-2 flex justify-end">
+                              {u.id !== currentUser?.id ? (
+                                <button
+                                  onClick={() => setDeleteModal(u)}
+                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-300 italic">
+                                  Вы
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Мобиль — карточки */}
+                      <div className="md:hidden divide-y divide-gray-100">
+                        {filteredUsers.map((u) => (
+                          <div key={u.id} className="p-4 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-[#00205C] text-white flex items-center justify-center text-sm font-bold shrink-0">
+                                {u.name?.[0]?.toUpperCase() ||
+                                  u.email[0].toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold truncate">
+                                  {[u.name, u.surname]
+                                    .filter(Boolean)
+                                    .join(" ") || "—"}
+                                </p>
+                                <p className="text-xs text-gray-400 truncate">
+                                  {u.email}
+                                </p>
+                              </div>
+                              {u.id !== currentUser?.id && (
+                                <button
+                                  onClick={() => setDeleteModal(u)}
+                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs text-gray-500">
+                                {u._count?.enrollments || 0} курсов
+                              </span>
+                              <select
+                                value={u.role}
+                                onChange={(e) =>
+                                  handleRoleChange(u.id, e.target.value)
+                                }
+                                disabled={u.id === currentUser?.id}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none cursor-pointer ${
+                                  u.role === "admin"
+                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    : "bg-blue-50 text-[#0056D2] border-blue-200"
+                                } ${u.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                              >
+                                <option value="student">Студент</option>
+                                <option value="admin">Администратор</option>
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
                 <p className="text-xs text-gray-400">

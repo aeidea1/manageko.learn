@@ -54,7 +54,7 @@ export const CoursePage = () => {
         courseId: course.id,
       });
       setEnrollment(res.data);
-      toast.success("Вы записались на курс! Удачи в обучении 🎉");
+      toast.success("Вы записались на курс. Удачи в обучении!");
     } catch {
       toast.error("Ошибка при записи на курс");
     } finally {

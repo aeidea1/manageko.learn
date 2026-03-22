@@ -236,7 +236,7 @@ export const ProfilePage = () => {
           {/* ПРАВАЯ КОЛОНКА */}
           <div className="lg:col-span-9 space-y-6">
             {/* Статистика */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {[
                 {
                   icon: BookOpen,
@@ -265,17 +265,19 @@ export const ProfilePage = () => {
               ].map((s, i) => (
                 <div
                   key={i}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
+                  className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5"
                 >
                   <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${s.color}`}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center mb-2 sm:mb-3 ${s.color}`}
                   >
-                    <s.icon size={18} />
+                    <s.icon size={16} />
                   </div>
-                  <p className="text-2xl font-black text-black mb-0.5">
+                  <p className="text-xl sm:text-2xl font-black text-black mb-0.5">
                     {s.value}
                   </p>
-                  <p className="text-xs text-gray-500">{s.label}</p>
+                  <p className="text-xs text-gray-500 leading-tight">
+                    {s.label}
+                  </p>
                 </div>
               ))}
             </div>
@@ -357,9 +359,10 @@ export const ProfilePage = () => {
                           onClick={() =>
                             downloadCertificate(fullName, e.course.title, date)
                           }
-                          className="flex items-center gap-1.5 text-xs font-bold text-[#0056D2] bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors opacity-0 group-hover:opacity-100"
+                          className="flex items-center gap-1.5 text-xs font-bold text-[#0056D2] bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors shrink-0 md:opacity-0 md:group-hover:opacity-100"
                         >
-                          <Download size={13} /> Скачать
+                          <Download size={13} />{" "}
+                          <span className="hidden sm:inline">Скачать</span>
                         </button>
                       </div>
                     );
