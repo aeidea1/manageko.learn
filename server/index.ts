@@ -6,6 +6,7 @@ import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
+import nodemailer from "nodemailer";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,6 +16,19 @@ const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
+
+// ─── EMAIL ─────────────────────────────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+});
+
+// Временное хранилище токенов сброса пароля (в памяти)
+// token -> { email, expires }
+const resetTokens = new Map<string, { email: string; expires: number }>();
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
@@ -93,7 +107,102 @@ app.put("/api/profile", async (req: any, res: any) => {
   }
 });
 
-// ─── COURSES ───────────────────────────────────────────────────────────────
+// ─── PASSWORD RECOVERY ────────────────────────────────────────────────────
+
+// Шаг 1: запрос на сброс — отправляем письмо
+app.post("/api/recovery/request", async (req: any, res: any) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Введите email" });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    // Не раскрываем существует ли пользователь
+    if (!user)
+      return res.json({
+        message: "Если такой email зарегистрирован, письмо отправлено",
+      });
+
+    // Генерируем токен
+    const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    resetTokens.set(token, { email, expires: Date.now() + 15 * 60 * 1000 }); // 15 минут
+
+    const resetUrl = `${process.env.FRONTEND_URL || "https://manageko-learn.vercel.app"}/recovery?token=${token}`;
+
+    await transporter.sendMail({
+      from: `"Manageko" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "Восстановление пароля — Manageko",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <h1 style="font-size: 24px; font-weight: 900; color: #0056D2; margin-bottom: 8px;">Manageko</h1>
+          <h2 style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 16px;">Восстановление пароля</h2>
+          <p style="color: #6b7280; font-size: 14px; margin-bottom: 24px; line-height: 1.6;">
+            Вы запросили сброс пароля для вашего аккаунта. Нажмите кнопку ниже чтобы задать новый пароль.
+            Ссылка действительна <strong>15 минут</strong>.
+          </p>
+          <a href="${resetUrl}" style="display: inline-block; background: #0056D2; color: #ffffff; font-size: 14px; font-weight: 700; padding: 14px 28px; border-radius: 4px; text-decoration: none; margin-bottom: 24px;">
+            Сбросить пароль
+          </a>
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
+            Если вы не запрашивали сброс пароля — просто проигнорируйте это письмо.
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="color: #d1d5db; font-size: 11px;">© Manageko Inc., 2026</p>
+        </div>
+      `,
+    });
+
+    res.json({
+      message: "Если такой email зарегистрирован, письмо отправлено",
+    });
+  } catch (error) {
+    console.error("Recovery error:", error);
+    res.status(500).json({ error: "Ошибка при отправке письма" });
+  }
+});
+
+// Шаг 2: проверка токена
+app.get("/api/recovery/verify/:token", async (req: any, res: any) => {
+  const { token } = req.params;
+  const entry = resetTokens.get(token);
+  if (!entry || entry.expires < Date.now()) {
+    return res
+      .status(400)
+      .json({ error: "Ссылка недействительна или истекла" });
+  }
+  res.json({ email: entry.email });
+});
+
+// Шаг 3: установка нового пароля
+app.post("/api/recovery/reset", async (req: any, res: any) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password)
+      return res.status(400).json({ error: "Недостаточно данных" });
+    if (password.length < 6)
+      return res
+        .status(400)
+        .json({ error: "Пароль должен быть минимум 6 символов" });
+
+    const entry = resetTokens.get(token);
+    if (!entry || entry.expires < Date.now()) {
+      return res
+        .status(400)
+        .json({ error: "Ссылка недействительна или истекла" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { email: entry.email },
+      data: { password: hashed },
+    });
+
+    resetTokens.delete(token); // Удаляем использованный токен
+    res.json({ message: "Пароль успешно изменён" });
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка при сбросе пароля" });
+  }
+});
 
 app.get("/api/courses", async (req: any, res: any) => {
   try {
@@ -149,11 +258,7 @@ app.get("/api/courses", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: {
-            questions: true,
-            documents: true,
-            practiceDocuments: true,
-          },
+          include: { questions: true, documents: true },
         },
       },
     });
@@ -170,11 +275,7 @@ app.get("/api/courses/:id", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: {
-            questions: true,
-            documents: true,
-            practiceDocuments: true,
-          },
+          include: { questions: true, documents: true },
         },
       },
     });
@@ -216,11 +317,7 @@ app.put("/api/courses/:id", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: {
-            questions: true,
-            documents: true,
-            practiceDocuments: true,
-          },
+          include: { questions: true, documents: true },
         },
       },
     });
@@ -265,24 +362,10 @@ app.post("/api/courses/:courseId/lessons", async (req: any, res: any) => {
       };
       const lesson = await prisma.lesson.create({ data: lessonData });
 
-      // Документы лекции
+      // Документы
       if (l.documents && l.documents.length > 0) {
         for (const doc of l.documents) {
           await prisma.document.create({
-            data: {
-              lessonId: lesson.id,
-              name: doc.name,
-              url: doc.url,
-              size: doc.size || null,
-            },
-          });
-        }
-      }
-
-      // Документы практики
-      if (l.practiceDocuments && l.practiceDocuments.length > 0) {
-        for (const doc of l.practiceDocuments) {
-          await (prisma as any).practiceDocument.create({
             data: {
               lessonId: lesson.id,
               name: doc.name,
@@ -315,11 +398,7 @@ app.post("/api/courses/:courseId/lessons", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: {
-            questions: true,
-            documents: true,
-            practiceDocuments: true,
-          },
+          include: { questions: true, documents: true },
         },
       },
     });
@@ -381,11 +460,7 @@ app.get("/api/my-courses/:userId", async (req: any, res: any) => {
           include: {
             lessons: {
               orderBy: { order: "asc" },
-              include: {
-                questions: true,
-                documents: true,
-                practiceDocuments: true,
-              },
+              include: { questions: true, documents: true },
             },
           },
         },
@@ -407,26 +482,17 @@ app.put("/api/enrollment/:id/progress", async (req: any, res: any) => {
       include: { course: true },
     });
 
-    // Уведомление о завершении — только если раньше не было
+    // Уведомление о завершении курса
     if (status === "completed") {
-      const existingNotif = await (prisma as any).notification.findFirst({
-        where: {
+      await prisma.notification.create({
+        data: {
           userId: updated.userId,
-          courseId: updated.courseId,
           type: "course_complete",
+          title: "Курс пройден!",
+          message: `Поздравляем! Вы завершили курс «${updated.course.title}».`,
+          courseId: updated.courseId,
         },
       });
-      if (!existingNotif) {
-        await (prisma as any).notification.create({
-          data: {
-            userId: updated.userId,
-            type: "course_complete",
-            title: "Курс пройден!",
-            message: `Поздравляем! Вы завершили курс «${updated.course.title}».`,
-            courseId: updated.courseId,
-          },
-        });
-      }
     }
 
     res.json(updated);
