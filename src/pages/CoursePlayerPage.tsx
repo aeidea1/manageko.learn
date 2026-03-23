@@ -15,10 +15,55 @@ import {
   XCircle,
   X,
   ZoomIn,
+  Award,
 } from "lucide-react";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 import { RichTextFull } from "../lib/richText";
+
+// Генерация сертификата
+const downloadCertificate = (userName: string, courseName: string) => {
+  const date = new Date().toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document
+    .write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Сертификат</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff}
+    .cert{width:900px;min-height:600px;border:2px solid #0056D2;border-radius:16px;padding:60px;position:relative;overflow:hidden}
+    .cert::before{content:'';position:absolute;top:0;left:0;right:0;height:8px;background:#0056D2}
+    .cert::after{content:'M';position:absolute;right:-20px;bottom:-40px;font-size:300px;font-weight:900;color:rgba(0,86,210,0.04);line-height:1}
+    .brand{font-size:28px;font-weight:900;color:#0056D2;letter-spacing:-1px;margin-bottom:40px}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:#0056D2;font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px;border:1px solid #bfdbfe;margin-bottom:40px}
+    .label{font-size:13px;color:#9ca3af;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
+    .name{font-size:40px;font-weight:900;color:#0056D2;margin-bottom:24px}
+    .sub{font-size:16px;color:#6b7280;margin-bottom:8px}
+    .course{font-size:24px;font-weight:700;color:#111827;margin-bottom:48px}
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #e5e7eb;padding-top:28px}
+    .date{font-size:13px;color:#9ca3af}
+    .sign-line{width:160px;border-top:2px solid #111827;margin-bottom:6px}
+    .sign-name{font-size:13px;font-weight:700}
+    .sign-role{font-size:11px;color:#9ca3af}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body><div class="cert">
+    <div class="brand">Manageko</div>
+    <div class="badge">✓ Сертификат о прохождении</div>
+    <div class="label">Настоящим удостоверяется, что</div>
+    <div class="name">${userName}</div>
+    <div class="sub">успешно прошёл(а) курс</div>
+    <div class="course">${courseName}</div>
+    <div class="footer">
+      <div class="date">Дата выдачи: ${date}</div>
+      <div><div class="sign-line"></div><div class="sign-name">Manageko Inc.</div><div class="sign-role">Образовательная платформа</div></div>
+    </div>
+  </div><script>setTimeout(()=>window.print(),400)</script></body></html>`);
+  win.document.close();
+};
 
 type Step = "video" | "test" | "practice" | "finish";
 
@@ -62,7 +107,6 @@ export const CoursePlayerPage = () => {
   const questions = currentLesson?.questions || [];
   const activeQuestion = questions[activeQuestionIndex] || null;
   const documents = currentLesson?.documents || [];
-  const practiceDocuments = currentLesson?.practiceDocuments || [];
 
   useEffect(() => {
     if (!course?.id || !user?.id || enrollmentId) return;
@@ -267,14 +311,15 @@ export const CoursePlayerPage = () => {
           {/* ПЛЕЕР */}
           <section className="lg:col-span-9">
             {currentStep === "finish" ? (
-              <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in-95">
-                <CheckCircle2 size={64} className="text-green-500 mb-6" />
-                <h1 className="text-2xl font-bold mb-2 text-center">
-                  {courseTitle}
-                </h1>
-                <p className="text-gray-600 mb-8 text-center">
-                  Поздравляем! Вы прошли курс.
-                  <br />
+              <div className="flex flex-col items-center justify-center py-16 animate-in fade-in zoom-in-95 max-w-md mx-auto text-center">
+                <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+                  <CheckCircle2 size={44} className="text-green-500" />
+                </div>
+                <h1 className="text-2xl font-bold mb-2">{courseTitle}</h1>
+                <p className="text-gray-500 mb-2">
+                  Поздравляем! Вы успешно прошли курс.
+                </p>
+                <p className="text-sm text-gray-400 mb-8">
                   Оцените его по пятибалльной шкале.
                 </p>
                 <div className="flex justify-center gap-2 mb-8">
@@ -285,7 +330,7 @@ export const CoursePlayerPage = () => {
                       className="transition-transform hover:scale-110"
                     >
                       <Star
-                        size={48}
+                        size={44}
                         className={
                           rating >= star
                             ? "fill-yellow-400 text-yellow-400"
@@ -295,13 +340,29 @@ export const CoursePlayerPage = () => {
                     </button>
                   ))}
                 </div>
-                <Button
-                  onClick={handleFinishRating}
-                  disabled={isSavingRating}
-                  className="px-10 py-3 text-sm font-bold"
-                >
-                  {isSavingRating ? "Сохранение..." : "Завершить курс"}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <Button
+                    onClick={handleFinishRating}
+                    disabled={isSavingRating}
+                    className="flex-1 py-3 text-sm font-bold"
+                  >
+                    {isSavingRating ? "Сохранение..." : "Завершить курс"}
+                  </Button>
+                  <button
+                    onClick={() => {
+                      const userData = localStorage.getItem("user");
+                      const u = userData ? JSON.parse(userData) : null;
+                      const fullName =
+                        [u?.name, u?.surname].filter(Boolean).join(" ") ||
+                        u?.email ||
+                        "Студент";
+                      downloadCertificate(fullName, courseTitle);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 border border-[#0056D2] text-[#0056D2] text-sm font-bold py-3 rounded-sm hover:bg-blue-50 transition-colors"
+                  >
+                    <Award size={16} /> Получить сертификат
+                  </button>
+                </div>
               </div>
             ) : !currentLesson ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -664,30 +725,7 @@ export const CoursePlayerPage = () => {
                         </div>
                       </div>
                     )}
-                    {/* Документы практики */}
-                    {practiceDocuments.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                          <FileText size={15} className="text-[#0056D2]" /> Материалы к практике
-                        </h3>
-                        <div className="space-y-2">
-                          {practiceDocuments.map((doc: any) => (
-                            <a key={doc.id} href={doc.url} download={doc.name}
-                              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-[#0056D2] hover:bg-blue-50 transition-all group">
-                              <div className="w-9 h-9 bg-blue-100 rounded-md flex items-center justify-center shrink-0">
-                                <FileText size={17} className="text-[#0056D2]" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold truncate">{doc.name}</p>
-                                {doc.size && <p className="text-xs text-gray-400">{doc.size}</p>}
-                              </div>
-                              <Download size={15} className="text-gray-400 group-hover:text-[#0056D2] shrink-0" />
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {/* Кнопка перехода */}
+                    {/* Кнопка перехода — без блока загрузки работы */}
                     <div className="flex items-center gap-4 flex-wrap">
                       <Button
                         onClick={handleNextLesson}

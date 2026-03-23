@@ -12,6 +12,7 @@ import { CoursePage } from "./pages/CoursePage";
 import { LandingPage } from "./pages/LandingPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { AdminPage } from "./pages/AdminPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 const GuestRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem("token");
@@ -146,7 +147,7 @@ function App() {
               </GuestRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
     </>
