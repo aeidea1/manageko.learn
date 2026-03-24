@@ -48,10 +48,7 @@ interface LessonCommentsProps {
   courseTitle?: string;
 }
 
-export const LessonComments = ({
-  lessonId,
-  courseTitle,
-}: LessonCommentsProps) => {
+export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
   const userData = localStorage.getItem("user");
   const currentUser = userData ? JSON.parse(userData) : null;
   const isAdmin = currentUser?.role === "admin";
