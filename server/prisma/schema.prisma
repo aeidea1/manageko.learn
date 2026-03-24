@@ -13,9 +13,11 @@ model User {
   name          String?
   surname       String?
   role          String         @default("student")
-  avatar        String?
-  createdAt     DateTime       @default(now())
-  enrollments   Enrollment[]
+  avatar              String?
+  createdAt           DateTime       @default(now())
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  enrollments         Enrollment[]
   notifications Notification[]
   comments      Comment[]
 }

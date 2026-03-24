@@ -6,6 +6,10 @@ import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
+import { Resend } from "resend";
+import crypto from "crypto";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -376,7 +380,11 @@ app.put("/api/enrollment/:id/progress", async (req: any, res: any) => {
     // Уведомление о завершении — только один раз
     if (status === "completed") {
       const existingNotif = await (prisma as any).notification.findFirst({
-        where: { userId: updated.userId, courseId: updated.courseId, type: "course_complete" },
+        where: {
+          userId: updated.userId,
+          courseId: updated.courseId,
+          type: "course_complete",
+        },
       });
       if (!existingNotif) {
         await (prisma as any).notification.create({
@@ -475,18 +483,18 @@ app.delete("/api/notifications/:id", async (req: any, res: any) => {
   }
 });
 
-
 // ─── ADMIN ─────────────────────────────────────────────────────────────────
 
 // Статистика платформы
 app.get("/api/admin/stats", async (req: any, res: any) => {
   try {
-    const [users, courses, enrollments, completedEnrollments] = await Promise.all([
-      prisma.user.count(),
-      prisma.course.count(),
-      prisma.enrollment.count(),
-      prisma.enrollment.count({ where: { status: "completed" } }),
-    ]);
+    const [users, courses, enrollments, completedEnrollments] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.course.count(),
+        prisma.enrollment.count(),
+        prisma.enrollment.count({ where: { status: "completed" } }),
+      ]);
     res.json({ users, courses, enrollments, completedEnrollments });
   } catch {
     res.status(500).json({ error: "Ошибка" });
@@ -499,8 +507,12 @@ app.get("/api/admin/users", async (req: any, res: any) => {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       select: {
-        id: true, email: true, name: true, surname: true,
-        role: true, createdAt: true,
+        id: true,
+        email: true,
+        name: true,
+        surname: true,
+        role: true,
+        createdAt: true,
         _count: { select: { enrollments: true } },
       },
     });
@@ -530,8 +542,12 @@ app.put("/api/admin/users/:id/role", async (req: any, res: any) => {
 // Удалить пользователя
 app.delete("/api/admin/users/:id", async (req: any, res: any) => {
   try {
-    await prisma.enrollment.deleteMany({ where: { userId: Number(req.params.id) } });
-    await (prisma as any).notification.deleteMany({ where: { userId: Number(req.params.id) } });
+    await prisma.enrollment.deleteMany({
+      where: { userId: Number(req.params.id) },
+    });
+    await (prisma as any).notification.deleteMany({
+      where: { userId: Number(req.params.id) },
+    });
     await prisma.user.delete({ where: { id: Number(req.params.id) } });
     res.json({ success: true });
   } catch {
@@ -539,26 +555,25 @@ app.delete("/api/admin/users/:id", async (req: any, res: any) => {
   }
 });
 
-
 // Рассылка уведомлений всем пользователям
 app.post("/api/admin/notify-all", async (req: any, res: any) => {
   try {
     const { title, message } = req.body;
-    if (!title || !message) return res.status(400).json({ error: "Заполните все поля" });
+    if (!title || !message)
+      return res.status(400).json({ error: "Заполните все поля" });
     const users = await prisma.user.findMany({ select: { id: true } });
     await Promise.all(
-      users.map(u =>
+      users.map((u) =>
         (prisma as any).notification.create({
           data: { userId: u.id, type: "announcement", title, message },
-        })
-      )
+        }),
+      ),
     );
     res.json({ sent: users.length });
   } catch {
     res.status(500).json({ error: "Ошибка при рассылке" });
   }
 });
-
 
 // ─── COMMENTS ─────────────────────────────────────────────────────────────
 
@@ -568,10 +583,26 @@ app.get("/api/lessons/:lessonId/comments", async (req: any, res: any) => {
     const comments = await (prisma as any).comment.findMany({
       where: { lessonId: Number(req.params.lessonId), parentId: null },
       include: {
-        user: { select: { id: true, name: true, surname: true, avatar: true, role: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            surname: true,
+            avatar: true,
+            role: true,
+          },
+        },
         replies: {
           include: {
-            user: { select: { id: true, name: true, surname: true, avatar: true, role: true } },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                surname: true,
+                avatar: true,
+                role: true,
+              },
+            },
           },
           orderBy: { createdAt: "asc" },
         },
@@ -588,7 +619,8 @@ app.get("/api/lessons/:lessonId/comments", async (req: any, res: any) => {
 app.post("/api/lessons/:lessonId/comments", async (req: any, res: any) => {
   try {
     const { userId, text, parentId } = req.body;
-    if (!userId || !text?.trim()) return res.status(400).json({ error: "Заполните все поля" });
+    if (!userId || !text?.trim())
+      return res.status(400).json({ error: "Заполните все поля" });
     const comment = await (prisma as any).comment.create({
       data: {
         lessonId: Number(req.params.lessonId),
@@ -597,7 +629,15 @@ app.post("/api/lessons/:lessonId/comments", async (req: any, res: any) => {
         parentId: parentId ? Number(parentId) : null,
       },
       include: {
-        user: { select: { id: true, name: true, surname: true, avatar: true, role: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            surname: true,
+            avatar: true,
+            role: true,
+          },
+        },
         replies: [],
       },
     });
@@ -610,8 +650,12 @@ app.post("/api/lessons/:lessonId/comments", async (req: any, res: any) => {
 // Удалить комментарий
 app.delete("/api/comments/:id", async (req: any, res: any) => {
   try {
-    await (prisma as any).comment.deleteMany({ where: { parentId: Number(req.params.id) } });
-    await (prisma as any).comment.delete({ where: { id: Number(req.params.id) } });
+    await (prisma as any).comment.deleteMany({
+      where: { parentId: Number(req.params.id) },
+    });
+    await (prisma as any).comment.delete({
+      where: { id: Number(req.params.id) },
+    });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Ошибка" });
@@ -622,17 +666,108 @@ app.delete("/api/comments/:id", async (req: any, res: any) => {
 app.put("/api/comments/:id", async (req: any, res: any) => {
   try {
     const { text } = req.body;
-    if (!text?.trim()) return res.status(400).json({ error: "Текст не может быть пустым" });
+    if (!text?.trim())
+      return res.status(400).json({ error: "Текст не может быть пустым" });
     const comment = await (prisma as any).comment.update({
       where: { id: Number(req.params.id) },
       data: { text: text.trim(), edited: true },
       include: {
-        user: { select: { id: true, name: true, surname: true, avatar: true, role: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            surname: true,
+            avatar: true,
+            role: true,
+          },
+        },
       },
     });
     res.json(comment);
   } catch {
     res.status(500).json({ error: "Ошибка" });
+  }
+});
+
+// ─── PASSWORD RECOVERY ─────────────────────────────────────────────────────
+
+app.post("/api/forgot-password", async (req: any, res: any) => {
+  try {
+    const { email } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Всегда отвечаем одинаково — чтобы не раскрывать существование email
+    if (!user)
+      return res.json({
+        message: "Если email зарегистрирован, ссылка отправлена",
+      });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 час
+
+    await prisma.user.update({
+      where: { email },
+      data: { resetToken: token, resetTokenExpiry: expiry },
+    });
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    await resend.emails.send({
+      from: "Manageko Learn <noreply@yourdomain.com>",
+      to: email,
+      subject: "Восстановление пароля",
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2>Восстановление пароля</h2>
+          <p>Вы запросили сброс пароля для аккаунта <b>${email}</b>.</p>
+          <p>Нажмите кнопку ниже, чтобы задать новый пароль. Ссылка действительна <b>1 час</b>.</p>
+          <a href="${resetUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-size:16px;">
+            Сбросить пароль
+          </a>
+          <p style="margin-top:24px;color:#888;font-size:13px;">Если вы не запрашивали сброс — просто проигнорируйте это письмо.</p>
+        </div>
+      `,
+    });
+
+    res.json({ message: "Если email зарегистрирован, ссылка отправлена" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+app.post("/api/reset-password", async (req: any, res: any) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password)
+      return res.status(400).json({ error: "Заполните все поля" });
+
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpiry: { gt: new Date() },
+      },
+    });
+
+    if (!user)
+      return res
+        .status(400)
+        .json({ error: "Ссылка недействительна или устарела" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+      },
+    });
+
+    res.json({ message: "Пароль успешно изменён" });
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
