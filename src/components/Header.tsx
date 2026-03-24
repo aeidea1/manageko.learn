@@ -227,7 +227,7 @@ export const Header = () => {
                     )}
                   </div>
 
-                  <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-50">
+                  <div className="max-h-[360px] overflow-y-auto overflow-x-hidden divide-y divide-gray-50">
                     {notifications.length === 0 ? (
                       <div className="px-4 py-8 text-center">
                         <Bell
@@ -245,23 +245,41 @@ export const Header = () => {
                       notifications.map((n) => (
                         <div
                           key={n.id}
-                          className={`px-4 py-3 flex gap-3 hover:bg-gray-50 cursor-default transition-colors ${!n.isRead ? "bg-blue-50/40" : ""}`}
+                          className={`px-4 py-3 flex gap-3 hover:bg-gray-50 transition-colors group ${!n.isRead ? "bg-blue-50/40" : ""}`}
                         >
-                          <div className="mt-0.5">{notifIcon(n.type)}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-black">
+                          <div className="mt-0.5 shrink-0">
+                            {notifIcon(n.type)}
+                          </div>
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <p className="text-xs font-bold text-black break-words">
                               {n.title}
                             </p>
-                            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed break-words whitespace-pre-wrap">
                               {n.message}
                             </p>
                             <p className="text-[10px] text-gray-400 mt-1">
                               {timeAgo(n.createdAt)}
                             </p>
                           </div>
-                          {!n.isRead && (
-                            <div className="w-2 h-2 bg-[#0056D2] rounded-full mt-1 shrink-0" />
-                          )}
+                          <div className="flex flex-col items-center gap-1 shrink-0">
+                            {!n.isRead && (
+                              <div className="w-2 h-2 bg-[#0056D2] rounded-full" />
+                            )}
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await api.delete(`/notifications/${n.id}`);
+                                  setNotifications((prev) =>
+                                    prev.filter((x) => x.id !== n.id),
+                                  );
+                                } catch {}
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500 p-0.5"
+                              title="Удалить"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
                         </div>
                       ))
                     )}

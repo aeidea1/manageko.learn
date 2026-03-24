@@ -105,14 +105,15 @@ model Notification {
 }
 
 model Comment {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   lessonId  Int
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson    Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
   text      String
+  edited    Boolean   @default(false)
   parentId  Int?
-  parent    Comment? @relation("replies", fields: [parentId], references: [id])
+  parent    Comment?  @relation("replies", fields: [parentId], references: [id])
   replies   Comment[] @relation("replies")
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }

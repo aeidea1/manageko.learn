@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { MessageCircle, Send, Trash2, CornerDownRight } from "lucide-react";
+import {
+  MessageCircle,
+  Send,
+  Trash2,
+  CornerDownRight,
+  Pencil,
+  Check,
+  X,
+} from "lucide-react";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
@@ -14,6 +22,7 @@ interface Comment {
   id: number;
   text: string;
   createdAt: string;
+  edited?: boolean;
   user: CommentUser;
   replies: Comment[];
 }
@@ -28,8 +37,8 @@ const timeAgo = (dateStr: string) => {
   return `${Math.floor(h / 24)} дн. назад`;
 };
 
-const Avatar = ({ user }: { user: CommentUser }) => {
-  const initials = (user.name?.[0] || user.surname?.[0] || "?").toUpperCase();
+const UserAvatar = ({ user }: { user: CommentUser }) => {
+  const initial = (user.name?.[0] || user.surname?.[0] || "?").toUpperCase();
   return user.avatar ? (
     <img
       src={user.avatar}
@@ -38,7 +47,135 @@ const Avatar = ({ user }: { user: CommentUser }) => {
     />
   ) : (
     <div className="w-8 h-8 rounded-full bg-[#00205C] text-white flex items-center justify-center text-xs font-bold shrink-0">
-      {initials}
+      {initial}
+    </div>
+  );
+};
+
+const userName = (user: CommentUser) =>
+  [user.name, user.surname].filter(Boolean).join(" ") || "Пользователь";
+
+interface CommentItemProps {
+  comment: Comment;
+  currentUser: any;
+  isAdmin: boolean;
+  onReply: (id: number, name: string) => void;
+  onDelete: (id: number, parentId?: number) => void;
+  onEdit: (id: number, text: string, parentId?: number) => void;
+  parentId?: number;
+  depth?: number;
+}
+
+const CommentItem = ({
+  comment,
+  currentUser,
+  isAdmin,
+  onReply,
+  onDelete,
+  onEdit,
+  parentId,
+  depth = 0,
+}: CommentItemProps) => {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.text);
+  const canModify = currentUser?.id === comment.user.id || isAdmin;
+
+  const handleSaveEdit = () => {
+    if (!editText.trim()) return;
+    onEdit(comment.id, editText.trim(), parentId);
+    setEditing(false);
+  };
+
+  return (
+    <div className="flex gap-3 group">
+      <UserAvatar user={comment.user} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="text-sm font-bold text-black">
+            {userName(comment.user)}
+          </span>
+          {comment.user.role === "admin" && (
+            <span className="text-[10px] font-bold bg-[#0056D2] text-white px-1.5 py-0.5 rounded">
+              Преподаватель
+            </span>
+          )}
+          <span className="text-xs text-gray-400">
+            {timeAgo(comment.createdAt)}
+          </span>
+          {comment.edited && (
+            <span className="text-[10px] text-gray-400 italic">изменено</span>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="flex gap-2 mb-2">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSaveEdit();
+                }
+              }}
+              rows={2}
+              className="flex-1 border border-[#0056D2] rounded-lg px-3 py-2 text-sm outline-none resize-none"
+              autoFocus
+            />
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={handleSaveEdit}
+                className="p-1.5 bg-[#0056D2] text-white rounded-lg hover:bg-blue-700"
+              >
+                <Check size={14} />
+              </button>
+              <button
+                onClick={() => {
+                  setEditing(false);
+                  setEditText(comment.text);
+                }}
+                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-700 leading-relaxed break-words whitespace-pre-wrap mb-1">
+            {comment.text}
+          </p>
+        )}
+
+        <div className="flex items-center gap-3">
+          {/* Ответить можно только на комментарии первого уровня */}
+          {depth === 0 && (
+            <button
+              onClick={() => onReply(comment.id, userName(comment.user))}
+              className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors font-medium"
+            >
+              Ответить
+            </button>
+          )}
+          {canModify && !editing && (
+            <>
+              {currentUser?.id === comment.user.id && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
+                >
+                  <Pencil size={11} /> Изменить
+                </button>
+              )}
+              <button
+                onClick={() => onDelete(comment.id, parentId)}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
+              >
+                <Trash2 size={11} /> Удалить
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
@@ -79,12 +216,21 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
     load();
   }, [lessonId]);
 
+  if (!lessonId)
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <h2 className="font-bold text-base mb-3 flex items-center gap-2">
+          <MessageCircle size={18} className="text-[#0056D2]" /> Вопросы и
+          обсуждение
+        </h2>
+        <p className="text-sm text-gray-400 italic">
+          Комментарии будут доступны после добавления уроков в курс.
+        </p>
+      </div>
+    );
+
   const handleSend = async () => {
-    if (!text.trim()) return;
-    if (!currentUser) {
-      toast.error("Войдите чтобы оставить комментарий");
-      return;
-    }
+    if (!text.trim() || !currentUser) return;
     setIsSending(true);
     try {
       const res = await api.post(`/lessons/${lessonId}/comments`, {
@@ -131,20 +277,44 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
     }
   };
 
-  const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
+  const handleEdit = async (
+    commentId: number,
+    newText: string,
+    parentId?: number,
+  ) => {
+    try {
+      const res = await api.put(`/comments/${commentId}`, { text: newText });
+      if (parentId) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === parentId
+              ? {
+                  ...c,
+                  replies: c.replies.map((r) =>
+                    r.id === commentId
+                      ? { ...r, text: res.data.text, edited: true }
+                      : r,
+                  ),
+                }
+              : c,
+          ),
+        );
+      } else {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId
+              ? { ...c, text: res.data.text, edited: true }
+              : c,
+          ),
+        );
+      }
+      toast.success("Комментарий изменён");
+    } catch {
+      toast.error("Ошибка");
+    }
+  };
 
-  if (!lessonId)
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h2 className="font-bold text-base mb-3 flex items-center gap-2">
-          <MessageCircle size={18} className="text-[#0056D2]" /> Вопросы и
-          обсуждение
-        </h2>
-        <p className="text-sm text-gray-400 italic">
-          Комментарии будут доступны после добавления уроков в курс.
-        </p>
-      </div>
-    );
+  const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
@@ -158,12 +328,12 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
         )}
       </h2>
 
-      {/* Форма отправки */}
+      {/* Форма */}
       {currentUser ? (
         <div className="mb-6">
           {replyTo && (
-            <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-              <CornerDownRight size={13} />
+            <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 bg-blue-50 px-3 py-1.5 rounded-lg w-fit">
+              <CornerDownRight size={12} />
               Ответ для <strong>{replyTo.name}</strong>
               <button
                 onClick={() => setReplyTo(null)}
@@ -174,7 +344,7 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
             </div>
           )}
           <div className="flex gap-3">
-            <Avatar user={currentUser} />
+            <UserAvatar user={currentUser} />
             <div className="flex-1 flex gap-2">
               <textarea
                 value={text}
@@ -191,7 +361,7 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
                     : "Задайте вопрос или поделитесь мыслями..."
                 }
                 rows={2}
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#0056D2] resize-none transition-colors"
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#0056D2] resize-none transition-colors min-w-0"
               />
               <button
                 onClick={handleSend}
@@ -212,14 +382,14 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
         </p>
       )}
 
-      {/* Список комментариев */}
+      {/* Список */}
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[...Array(2)].map((_, i) => (
             <div key={i} className="flex gap-3 animate-pulse">
               <div className="w-8 h-8 bg-gray-100 rounded-full shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 bg-gray-100 rounded w-32" />
+                <div className="h-3 bg-gray-100 rounded w-28" />
                 <div className="h-4 bg-gray-100 rounded w-full" />
               </div>
             </div>
@@ -233,93 +403,32 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {comments.map((comment) => (
             <div key={comment.id}>
-              {/* Основной комментарий */}
-              <div className="flex gap-3 group">
-                <Avatar user={comment.user} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-sm font-bold text-black">
-                      {[comment.user.name, comment.user.surname]
-                        .filter(Boolean)
-                        .join(" ") || "Пользователь"}
-                    </span>
-                    {comment.user.role === "admin" && (
-                      <span className="text-[10px] font-bold bg-[#0056D2] text-white px-1.5 py-0.5 rounded">
-                        Преподаватель
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-400">
-                      {timeAgo(comment.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
-                    {comment.text}
-                  </p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <button
-                      onClick={() =>
-                        setReplyTo({
-                          id: comment.id,
-                          name:
-                            [comment.user.name, comment.user.surname]
-                              .filter(Boolean)
-                              .join(" ") || "Пользователь",
-                        })
-                      }
-                      className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors font-medium"
-                    >
-                      Ответить
-                    </button>
-                    {(currentUser?.id === comment.user.id || isAdmin) && (
-                      <button
-                        onClick={() => handleDelete(comment.id)}
-                        className="text-xs text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Ответы */}
+              <CommentItem
+                comment={comment}
+                currentUser={currentUser}
+                isAdmin={isAdmin}
+                onReply={(id, name) => setReplyTo({ id, name })}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                depth={0}
+              />
               {comment.replies.length > 0 && (
-                <div className="ml-11 mt-3 space-y-3 border-l-2 border-gray-100 pl-4">
+                <div className="ml-11 mt-3 space-y-4 border-l-2 border-gray-100 pl-4">
                   {comment.replies.map((reply) => (
-                    <div key={reply.id} className="flex gap-3 group">
-                      <Avatar user={reply.user} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-sm font-bold text-black">
-                            {[reply.user.name, reply.user.surname]
-                              .filter(Boolean)
-                              .join(" ") || "Пользователь"}
-                          </span>
-                          {reply.user.role === "admin" && (
-                            <span className="text-[10px] font-bold bg-[#0056D2] text-white px-1.5 py-0.5 rounded">
-                              Преподаватель
-                            </span>
-                          )}
-                          <span className="text-xs text-gray-400">
-                            {timeAgo(reply.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
-                          {reply.text}
-                        </p>
-                        {(currentUser?.id === reply.user.id || isAdmin) && (
-                          <button
-                            onClick={() => handleDelete(reply.id, comment.id)}
-                            className="mt-1 text-xs text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    <CommentItem
+                      key={reply.id}
+                      comment={reply}
+                      currentUser={currentUser}
+                      isAdmin={isAdmin}
+                      onReply={(id, name) => setReplyTo({ id, name })}
+                      onDelete={handleDelete}
+                      onEdit={handleEdit}
+                      parentId={comment.id}
+                      depth={1}
+                    />
                   ))}
                 </div>
               )}
