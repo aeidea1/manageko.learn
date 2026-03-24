@@ -45,9 +45,13 @@ const Avatar = ({ user }: { user: CommentUser }) => {
 
 interface LessonCommentsProps {
   lessonId: number;
+  courseTitle?: string;
 }
 
-export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
+export const LessonComments = ({
+  lessonId,
+  courseTitle,
+}: LessonCommentsProps) => {
   const userData = localStorage.getItem("user");
   const currentUser = userData ? JSON.parse(userData) : null;
   const isAdmin = currentUser?.role === "admin";
@@ -71,6 +75,10 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
   };
 
   useEffect(() => {
+    if (!lessonId) {
+      setIsLoading(false);
+      return;
+    }
     load();
   }, [lessonId]);
 
@@ -127,6 +135,19 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
   };
 
   const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
+
+  if (!lessonId)
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <h2 className="font-bold text-base mb-3 flex items-center gap-2">
+          <MessageCircle size={18} className="text-[#0056D2]" /> Вопросы и
+          обсуждение
+        </h2>
+        <p className="text-sm text-gray-400 italic">
+          Комментарии будут доступны после добавления уроков в курс.
+        </p>
+      </div>
+    );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">

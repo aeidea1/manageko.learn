@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
+import { LessonComments } from "../components/LessonComments";
 
 export const CoursePage = () => {
   const location = useLocation();
@@ -25,13 +26,24 @@ export const CoursePage = () => {
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
 
+  const [courseData, setCourseData] = useState<any>(course);
   const [enrollment, setEnrollment] = useState<any>(null);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user?.id || !course?.id) {
+    if (!course?.id) {
+      setIsLoading(false);
+      return;
+    }
+    // Загружаем актуальный курс с уроками
+    api
+      .get(`/courses/${course.id}`)
+      .then((res) => setCourseData(res.data))
+      .catch(() => {});
+    // Загружаем enrollment
+    if (!user?.id) {
       setIsLoading(false);
       return;
     }
@@ -54,13 +66,9 @@ export const CoursePage = () => {
         courseId: course.id,
       });
       setEnrollment(res.data);
-      toast.success(() => (
-        <span>
-          Вы записались на курс!
-          <br />
-          Удачи в обучении.
-        </span>
-      ));
+      toast.success("Вы записались на курс!\nУдачи в обучении.", {
+        style: { whiteSpace: "pre-line" },
+      });
     } catch {
       toast.error("Ошибка при записи на курс");
     } finally {
@@ -71,7 +79,7 @@ export const CoursePage = () => {
   const handleContinue = () => {
     navigate("/learn", {
       state: {
-        course,
+        course: courseData,
         enrollmentId: enrollment?.id,
         progress: enrollment?.progress || 0,
       },
@@ -94,7 +102,7 @@ export const CoursePage = () => {
       </div>
     );
 
-  const lessons = course.lessons || [];
+  const lessons = courseData?.lessons || [];
   const isCompleted = enrollment?.status === "completed";
   const isInProgress = enrollment?.status === "in_progress";
   const progress = enrollment?.progress || 0;
@@ -165,10 +173,10 @@ export const CoursePage = () => {
         className="relative w-full bg-[#00205C] overflow-hidden"
         style={{ minHeight: 300 }}
       >
-        {course.image && course.image.startsWith("data:image") && (
+        {courseData.image && courseData.image.startsWith("data:image") && (
           <img
-            src={course.image}
-            alt={course.title}
+            src={courseData.image}
+            alt={courseData.title}
             className="w-full h-full object-cover absolute inset-0 opacity-30"
             style={{ minHeight: 300 }}
           />
@@ -183,42 +191,42 @@ export const CoursePage = () => {
               Главная
             </Link>
             <ChevronRight size={12} />
-            {course.category && (
+            {courseData.category && (
               <>
                 <Link
-                  to={`/dashboard?category=${encodeURIComponent(course.category)}`}
+                  to={`/dashboard?category=${encodeURIComponent(courseData.category)}`}
                   className="hover:text-white"
                 >
-                  {course.category}
+                  {courseData.category}
                 </Link>
                 <ChevronRight size={12} />
               </>
             )}
-            <span className="text-white/80">{course.title}</span>
+            <span className="text-white/80">{courseData.title}</span>
           </div>
-          {course.category && (
+          {courseData.category && (
             <span className="inline-block bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full border border-white/30 mb-3 w-fit">
-              {course.category}
+              {courseData.category}
             </span>
           )}
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 leading-tight">
-            {course.title}
+            {courseData.title}
           </h1>
-          {course.description && (
+          {courseData.description && (
             <p className="text-white/70 text-sm leading-relaxed max-w-2xl mb-4 line-clamp-2">
-              {course.description}
+              {courseData.description}
             </p>
           )}
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-1 text-sm text-white">
               <Star size={15} className="fill-yellow-400 text-yellow-400" />
               <span className="font-bold">
-                {course.rating > 0 ? course.rating.toFixed(1) : "—"}
+                {courseData.rating > 0 ? courseData.rating.toFixed(1) : "—"}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-white/70">
               <Users size={14} />
-              <span>{course.students || 0} учеников</span>
+              <span>{courseData.students || 0} учеников</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-white/70">
               <BookOpen size={14} />
@@ -270,20 +278,20 @@ export const CoursePage = () => {
               </div>
             )}
 
-            {course.description && (
+            {courseData.description && (
               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                 <h2 className="text-xl font-bold mb-3">О курсе</h2>
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {course.description}
+                  {courseData.description}
                 </p>
               </div>
             )}
 
-            {course.skills && course.skills.length > 0 && (
+            {courseData.skills && courseData.skills.length > 0 && (
               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                 <h2 className="text-xl font-bold mb-4">Получаемые навыки</h2>
                 <div className="flex flex-wrap gap-2">
-                  {course.skills.map((skill: string, i: number) => (
+                  {courseData.skills.map((skill: string, i: number) => (
                     <span
                       key={i}
                       className="px-4 py-2 bg-[#555d6b] text-white text-xs font-bold rounded-full"
@@ -389,6 +397,19 @@ export const CoursePage = () => {
                 </div>
               </div>
             )}
+
+            {/* Комментарии — показываем всегда когда есть courseData */}
+            {courseData?.id &&
+              (lessons.length > 0 ? (
+                <LessonComments
+                  lessonId={
+                    lessons[Math.min(completedCount, lessons.length - 1)]?.id
+                  }
+                  courseTitle={courseData.title}
+                />
+              ) : (
+                <LessonComments lessonId={0} courseTitle={courseData.title} />
+              ))}
           </div>
 
           {/* ПРАВАЯ КОЛОНКА sticky */}
@@ -396,17 +417,18 @@ export const CoursePage = () => {
             <div className="sticky top-24 space-y-4">
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div
-                  className={`w-full aspect-video bg-gradient-to-br from-[#0056D2] to-[#00205C] flex items-center justify-center overflow-hidden relative ${course.image ? "cursor-zoom-in" : ""}`}
+                  className={`w-full aspect-video bg-gradient-to-br from-[#0056D2] to-[#00205C] flex items-center justify-center overflow-hidden relative ${courseData.image ? "cursor-zoom-in" : ""}`}
                   onClick={() =>
-                    course.image &&
-                    course.image.startsWith("data:image") &&
-                    setLightboxImg(course.image)
+                    courseData.image &&
+                    courseData.image.startsWith("data:image") &&
+                    setLightboxImg(courseData.image)
                   }
                 >
-                  {course.image && course.image.startsWith("data:image") ? (
+                  {courseData.image &&
+                  courseData.image.startsWith("data:image") ? (
                     <img
-                      src={course.image}
-                      alt={course.title}
+                      src={courseData.image}
+                      alt={courseData.title}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -414,17 +436,20 @@ export const CoursePage = () => {
                       M
                     </span>
                   )}
-                  {course.image && course.image.startsWith("data:image") && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/20">
-                      <ZoomIn size={24} className="text-white" />
-                    </div>
-                  )}
+                  {courseData.image &&
+                    courseData.image.startsWith("data:image") && (
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/20">
+                        <ZoomIn size={24} className="text-white" />
+                      </div>
+                    )}
                 </div>
                 <div className="p-5">
-                  <h3 className="font-bold text-base mb-1">{course.title}</h3>
-                  {course.category && (
+                  <h3 className="font-bold text-base mb-1">
+                    {courseData.title}
+                  </h3>
+                  {courseData.category && (
                     <p className="text-xs text-gray-500 mb-4">
-                      {course.category}
+                      {courseData.category}
                     </p>
                   )}
                   <div className="flex items-center gap-4 mb-5 text-sm text-gray-600">
@@ -438,7 +463,9 @@ export const CoursePage = () => {
                         className="fill-yellow-400 text-yellow-400"
                       />
                       <span>
-                        {course.rating > 0 ? course.rating.toFixed(1) : "—"}
+                        {courseData.rating > 0
+                          ? courseData.rating.toFixed(1)
+                          : "—"}
                       </span>
                     </div>
                   </div>
