@@ -636,6 +636,6 @@ app.put("/api/comments/:id", async (req: any, res: any) => {
   }
 });
 
-
+app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
 });
