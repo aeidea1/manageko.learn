@@ -63,7 +63,6 @@ interface CommentItemProps {
   onDelete: (id: number, parentId?: number) => void;
   onEdit: (id: number, text: string, parentId?: number) => void;
   parentId?: number;
-  depth?: number;
 }
 
 const CommentItem = ({
@@ -74,7 +73,6 @@ const CommentItem = ({
   onDelete,
   onEdit,
   parentId,
-  depth = 0,
 }: CommentItemProps) => {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
@@ -414,7 +412,6 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
                 onReply={(id, name, rootId) => setReplyTo({ id, name, rootId })}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
-                depth={0}
               />
               {comment.replies.length > 0 && (
                 <div className="ml-11 mt-3 space-y-4 border-l-2 border-gray-100 pl-4">
@@ -430,7 +427,6 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
                       onDelete={handleDelete}
                       onEdit={handleEdit}
                       parentId={comment.id}
-                      depth={1}
                     />
                   ))}
                 </div>
