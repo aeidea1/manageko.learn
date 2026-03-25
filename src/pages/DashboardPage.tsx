@@ -15,14 +15,17 @@ const SKILL_TAGS = [
   "UI/UX",
 ];
 
-// Надёжный ключ: год + номер недели ISO
+// Надёжный ключ: год + номер недели ISO (по понедельнику)
 const getActivityKey = () => {
   const d = new Date();
-  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const day = d.getDay() === 0 ? 7 : d.getDay(); // пн=1 ... вс=7
+  const thursday = new Date(d);
+  thursday.setDate(d.getDate() + 4 - day); // ближайший четверг
+  const yearStart = new Date(thursday.getFullYear(), 0, 1);
   const week = Math.ceil(
-    ((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7,
+    ((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
   );
-  return `activity_${d.getFullYear()}_W${week}`;
+  return `activity_${thursday.getFullYear()}_W${week}`;
 };
 
 // Инициализируем активность с сегодняшним днём
@@ -31,11 +34,19 @@ const initActivity = (currentDayIndex: number): boolean[] => {
     const saved = localStorage.getItem(getActivityKey());
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length === 7) return parsed;
+      if (Array.isArray(parsed) && parsed.length === 7) {
+        // Всегда помечаем сегодня как активный
+        if (!parsed[currentDayIndex]) {
+          parsed[currentDayIndex] = true;
+          localStorage.setItem(getActivityKey(), JSON.stringify(parsed));
+        }
+        return parsed;
+      }
     }
   } catch {}
   const arr = Array(7).fill(false);
   arr[currentDayIndex] = true;
+  localStorage.setItem(getActivityKey(), JSON.stringify(arr));
   return arr;
 };
 
@@ -60,15 +71,7 @@ export const DashboardPage = () => {
   );
 
   useEffect(() => {
-    const current = initActivity(currentDayIndex);
-    if (!current[currentDayIndex]) {
-      const updated = [...current];
-      updated[currentDayIndex] = true;
-      setActivityDays(updated);
-      localStorage.setItem(getActivityKey(), JSON.stringify(updated));
-    } else {
-      setActivityDays(current);
-    }
+    setActivityDays(initActivity(currentDayIndex));
   }, []);
 
   useEffect(() => {
