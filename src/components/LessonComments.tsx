@@ -59,7 +59,7 @@ interface CommentItemProps {
   comment: Comment;
   currentUser: any;
   isAdmin: boolean;
-  onReply: (id: number, name: string) => void;
+  onReply: (id: number, name: string, rootId?: number) => void;
   onDelete: (id: number, parentId?: number) => void;
   onEdit: (id: number, text: string, parentId?: number) => void;
   parentId?: number;
@@ -148,14 +148,14 @@ const CommentItem = ({
 
         <div className="flex items-center gap-3">
           {/* Ответить можно только на комментарии первого уровня */}
-          {depth === 0 && (
-            <button
-              onClick={() => onReply(comment.id, userName(comment.user))}
-              className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors font-medium"
-            >
-              Ответить
-            </button>
-          )}
+          <button
+            onClick={() =>
+              onReply(comment.id, userName(comment.user), parentId)
+            }
+            className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors font-medium"
+          >
+            Ответить
+          </button>
           {canModify && !editing && (
             <>
               {currentUser?.id === comment.user.id && (
@@ -192,9 +192,11 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState("");
-  const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(
-    null,
-  );
+  const [replyTo, setReplyTo] = useState<{
+    id: number;
+    name: string;
+    rootId?: number;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
@@ -233,17 +235,16 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
     if (!text.trim() || !currentUser) return;
     setIsSending(true);
     try {
+      const rootId = replyTo?.rootId ?? replyTo?.id ?? null;
       const res = await api.post(`/lessons/${lessonId}/comments`, {
         userId: currentUser.id,
         text,
-        parentId: replyTo?.id || null,
+        parentId: rootId,
       });
       if (replyTo) {
         setComments((prev) =>
           prev.map((c) =>
-            c.id === replyTo.id
-              ? { ...c, replies: [...c.replies, res.data] }
-              : c,
+            c.id === rootId ? { ...c, replies: [...c.replies, res.data] } : c,
           ),
         );
       } else {
@@ -410,7 +411,7 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
                 comment={comment}
                 currentUser={currentUser}
                 isAdmin={isAdmin}
-                onReply={(id, name) => setReplyTo({ id, name })}
+                onReply={(id, name, rootId) => setReplyTo({ id, name, rootId })}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
                 depth={0}
@@ -423,7 +424,9 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
                       comment={reply}
                       currentUser={currentUser}
                       isAdmin={isAdmin}
-                      onReply={(id, name) => setReplyTo({ id, name })}
+                      onReply={(id, name, rootId) =>
+                        setReplyTo({ id, name, rootId })
+                      }
                       onDelete={handleDelete}
                       onEdit={handleEdit}
                       parentId={comment.id}

@@ -641,6 +641,32 @@ app.post("/api/lessons/:lessonId/comments", async (req: any, res: any) => {
         replies: [],
       },
     });
+
+    // Уведомление автору родительского комментария
+    if (parentId) {
+      const parentComment = await (prisma as any).comment.findUnique({
+        where: { id: Number(parentId) },
+        include: { user: true },
+      });
+      if (parentComment && parentComment.userId !== Number(userId)) {
+        const replier = await prisma.user.findUnique({
+          where: { id: Number(userId) },
+          select: { name: true, surname: true },
+        });
+        const replierName =
+          [replier?.name, replier?.surname].filter(Boolean).join(" ") ||
+          "Кто-то";
+        await (prisma as any).notification.create({
+          data: {
+            userId: parentComment.userId,
+            type: "comment_reply",
+            title: "Новый ответ на ваш комментарий",
+            message: `${replierName} ответил(а) на ваш комментарий: «${text.trim().slice(0, 80)}»`,
+          },
+        });
+      }
+    }
+
     res.status(201).json(comment);
   } catch {
     res.status(500).json({ error: "Ошибка" });
