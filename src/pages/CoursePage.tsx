@@ -402,9 +402,7 @@ export const CoursePage = () => {
             {courseData?.id &&
               (lessons.length > 0 ? (
                 <LessonComments
-                  lessonId={
-                    lessons[Math.min(completedCount, lessons.length - 1)]?.id
-                  }
+                  lessonId={lessons[0]?.id}
                   courseTitle={courseData.title}
                 />
               ) : (

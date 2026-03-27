@@ -153,7 +153,11 @@ app.get("/api/courses", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -170,7 +174,11 @@ app.get("/api/courses/:id", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -212,7 +220,11 @@ app.put("/api/courses/:id", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -271,6 +283,20 @@ app.post("/api/courses/:courseId/lessons", async (req: any, res: any) => {
         }
       }
 
+      // Документы практики
+      if (l.practiceDocuments && l.practiceDocuments.length > 0) {
+        for (const doc of l.practiceDocuments) {
+          await (prisma as any).practiceDocument.create({
+            data: {
+              lessonId: lesson.id,
+              name: doc.name,
+              url: doc.url,
+              size: doc.size || null,
+            },
+          });
+        }
+      }
+
       // Вопросы
       if (l.questions && l.questions.length > 0) {
         for (const q of l.questions) {
@@ -293,7 +319,11 @@ app.post("/api/courses/:courseId/lessons", async (req: any, res: any) => {
       include: {
         lessons: {
           orderBy: { order: "asc" },
-          include: { questions: true, documents: true },
+          include: {
+            questions: true,
+            documents: true,
+            practiceDocuments: true,
+          },
         },
       },
     });
@@ -355,7 +385,11 @@ app.get("/api/my-courses/:userId", async (req: any, res: any) => {
           include: {
             lessons: {
               orderBy: { order: "asc" },
-              include: { questions: true, documents: true },
+              include: {
+                questions: true,
+                documents: true,
+                practiceDocuments: true,
+              },
             },
           },
         },

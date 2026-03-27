@@ -67,11 +67,11 @@ export const DashboardPage = () => {
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1;
 
   const [activityDays, setActivityDays] = useState<boolean[]>(() =>
-    initActivity(currentDayIndex),
+    initActivity(currentDayIndex, user?.id),
   );
 
   useEffect(() => {
-    setActivityDays(initActivity(currentDayIndex));
+    setActivityDays(initActivity(currentDayIndex, user?.id));
   }, []);
 
   useEffect(() => {
