@@ -29,16 +29,15 @@ const getActivityKey = () => {
 };
 
 // Инициализируем активность с сегодняшним днём
-const initActivity = (currentDayIndex: number): boolean[] => {
+const initActivity = (currentDayIndex: number, userId?: number): boolean[] => {
   try {
-    const saved = localStorage.getItem(getActivityKey());
+    const saved = localStorage.getItem(getActivityKey(userId));
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length === 7) {
-        // Всегда помечаем сегодня как активный
         if (!parsed[currentDayIndex]) {
           parsed[currentDayIndex] = true;
-          localStorage.setItem(getActivityKey(), JSON.stringify(parsed));
+          localStorage.setItem(getActivityKey(userId), JSON.stringify(parsed));
         }
         return parsed;
       }
@@ -46,7 +45,7 @@ const initActivity = (currentDayIndex: number): boolean[] => {
   } catch {}
   const arr = Array(7).fill(false);
   arr[currentDayIndex] = true;
-  localStorage.setItem(getActivityKey(), JSON.stringify(arr));
+  localStorage.setItem(getActivityKey(userId), JSON.stringify(arr));
   return arr;
 };
 
