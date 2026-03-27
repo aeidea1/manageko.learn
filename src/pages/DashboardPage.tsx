@@ -16,16 +16,16 @@ const SKILL_TAGS = [
 ];
 
 // Надёжный ключ: год + номер недели ISO (по понедельнику)
-const getActivityKey = () => {
+const getActivityKey = (userId?: number) => {
   const d = new Date();
-  const day = d.getDay() === 0 ? 7 : d.getDay(); // пн=1 ... вс=7
+  const day = d.getDay() === 0 ? 7 : d.getDay();
   const thursday = new Date(d);
-  thursday.setDate(d.getDate() + 4 - day); // ближайший четверг
+  thursday.setDate(d.getDate() + 4 - day);
   const yearStart = new Date(thursday.getFullYear(), 0, 1);
   const week = Math.ceil(
     ((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
   );
-  return `activity_${thursday.getFullYear()}_W${week}`;
+  return `activity_u${userId || 0}_${thursday.getFullYear()}_W${week}`;
 };
 
 // Инициализируем активность с сегодняшним днём
