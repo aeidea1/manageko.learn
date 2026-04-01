@@ -6,18 +6,31 @@ import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
-const CATEGORIES = ["Python", "Kotlin", "React", "Vue", "Lua", "Figma", "UI/UX"];
+const CATEGORIES = [
+  "Python",
+  "Kotlin",
+  "React",
+  "Vue",
+  "Lua",
+  "Figma",
+  "UI/UX",
+];
 
-const getActivityKey = () => {
+const getActivityKey = (userId?: number) => {
   const d = new Date();
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
-  return `activity_${d.getFullYear()}_W${week}`;
+  const day = d.getDay() === 0 ? 7 : d.getDay();
+  const thursday = new Date(d);
+  thursday.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(thursday.getFullYear(), 0, 1);
+  const week = Math.ceil(
+    ((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
+  return `activity_u${userId || 0}_${thursday.getFullYear()}_W${week}`;
 };
 
-const readActivity = (currentDayIndex: number): boolean[] => {
+const readActivity = (currentDayIndex: number, userId?: number): boolean[] => {
   try {
-    const saved = localStorage.getItem(getActivityKey());
+    const saved = localStorage.getItem(getActivityKey(userId));
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length === 7) return parsed;
@@ -30,7 +43,9 @@ const readActivity = (currentDayIndex: number): boolean[] => {
 
 export const MyLearningPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"progress" | "completed">("progress");
+  const [activeTab, setActiveTab] = useState<"progress" | "completed">(
+    "progress",
+  );
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,7 +55,9 @@ export const MyLearningPage = () => {
   const jsDay = new Date().getDay();
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1;
 
-  const [activityDays] = useState<boolean[]>(() => readActivity(currentDayIndex));
+  const [activityDays] = useState<boolean[]>(() =>
+    readActivity(currentDayIndex, user?.id),
+  );
 
   const activeDaysCount = activityDays.filter(Boolean).length;
 
@@ -59,8 +76,8 @@ export const MyLearningPage = () => {
     fetchEnrollments();
   }, []);
 
-  const inProgress = enrollments.filter(e => e.status === "in_progress");
-  const completed = enrollments.filter(e => e.status === "completed");
+  const inProgress = enrollments.filter((e) => e.status === "in_progress");
+  const completed = enrollments.filter((e) => e.status === "completed");
   const displayList = activeTab === "progress" ? inProgress : completed;
 
   return (
@@ -75,7 +92,9 @@ export const MyLearningPage = () => {
               <h1 className="text-xl md:text-2xl font-bold mb-2">
                 Добро пожаловать, {user?.name || "студент"}!
               </h1>
-              <p className="text-sm text-black">Ваша цель — начать карьеру в сфере IT</p>
+              <p className="text-sm text-black">
+                Ваша цель — начать карьеру в сфере IT
+              </p>
             </div>
 
             <hr className="border-gray-200 hidden md:block" />
@@ -91,11 +110,12 @@ export const MyLearningPage = () => {
                     <div
                       key={day}
                       className={`aspect-square flex items-center justify-center rounded text-xs uppercase font-medium border transition-colors
-                        ${isToday
-                          ? "bg-[#0056D2] text-white border-[#0056D2] shadow"
-                          : isActive
-                          ? "bg-blue-100 text-[#0056D2] border-blue-200 font-bold"
-                          : "border-gray-300 text-gray-400"
+                        ${
+                          isToday
+                            ? "bg-[#0056D2] text-white border-[#0056D2] shadow"
+                            : isActive
+                              ? "bg-blue-100 text-[#0056D2] border-blue-200 font-bold"
+                              : "border-gray-300 text-gray-400"
                         }`}
                     >
                       {day}
@@ -110,12 +130,16 @@ export const MyLearningPage = () => {
             </div>
 
             <div>
-              <h2 className="font-bold text-xl mb-4 text-black">Популярные категории</h2>
+              <h2 className="font-bold text-xl mb-4 text-black">
+                Популярные категории
+              </h2>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((cat) => (
                   <span
                     key={cat}
-                    onClick={() => navigate(`/dashboard?search=${encodeURIComponent(cat)}`)}
+                    onClick={() =>
+                      navigate(`/dashboard?search=${encodeURIComponent(cat)}`)
+                    }
                     className="px-4 py-2 bg-[#555d6b] text-white rounded-full text-xs font-bold shadow-sm cursor-pointer hover:bg-[#0056D2] transition-colors"
                   >
                     {cat}
@@ -186,12 +210,24 @@ export const MyLearningPage = () => {
                     <CourseCard
                       title={enrollment.course.title}
                       image={enrollment.course.image}
-                      skills={enrollment.course.skills ? enrollment.course.skills.join(", ") : ""}
+                      skills={
+                        enrollment.course.skills
+                          ? enrollment.course.skills.join(", ")
+                          : ""
+                      }
                       rating={enrollment.course.rating || 0}
                       students={`${enrollment.course.students || 0} учеников`}
-                      buttonText={activeTab === "progress" ? "Продолжить изучение" : "Открыть курс"}
+                      buttonText={
+                        activeTab === "progress"
+                          ? "Продолжить изучение"
+                          : "Открыть курс"
+                      }
                       progress={enrollment.progress}
-                      onButtonClick={() => navigate("/course", { state: { course: enrollment.course } })}
+                      onButtonClick={() =>
+                        navigate("/course", {
+                          state: { course: enrollment.course },
+                        })
+                      }
                     />
                   </div>
                 ))}

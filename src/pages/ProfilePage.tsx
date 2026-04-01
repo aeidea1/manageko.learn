@@ -79,13 +79,16 @@ const downloadCertificate = (
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
-const getActivityKey = () => {
+const getActivityKey = (userId?: number) => {
   const d = new Date();
-  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const day = d.getDay() === 0 ? 7 : d.getDay();
+  const thursday = new Date(d);
+  thursday.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(thursday.getFullYear(), 0, 1);
   const week = Math.ceil(
-    ((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7,
+    ((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
   );
-  return `activity_${d.getFullYear()}_W${week}`;
+  return `activity_u${userId || 0}_${thursday.getFullYear()}_W${week}`;
 };
 
 export const ProfilePage = () => {
@@ -101,7 +104,7 @@ export const ProfilePage = () => {
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1;
   const activityDays: boolean[] = (() => {
     try {
-      const saved = localStorage.getItem(getActivityKey());
+      const saved = localStorage.getItem(getActivityKey(user?.id));
       if (saved) {
         const p = JSON.parse(saved);
         if (Array.isArray(p) && p.length === 7) return p;
