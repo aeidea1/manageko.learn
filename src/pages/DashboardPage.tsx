@@ -139,14 +139,14 @@ export const DashboardPage = () => {
                 })}
               </div>
               <p className="text-xs text-gray-500">
-                Активных дней:{" "}
+                Активных дней на этой неделе:{" "}
                 <span className="font-bold text-black">{activeDaysCount}</span>
               </p>
             </div>
 
             <div>
               <h2 className="font-bold text-xl mb-4 text-black">
-                Популярные теги
+                Популярные категории
               </h2>
               <div className="flex flex-wrap gap-2">
                 {SKILL_TAGS.map((tag) => (

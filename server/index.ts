@@ -13,16 +13,40 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const SECRET_KEY = "manageko-super-secret";
+const SECRET_KEY = process.env.JWT_SECRET || "manageko-super-secret-change-me";
 
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// ─── MIDDLEWARE ────────────────────────────────────────────────────────────
+
+const authMiddleware = (req: any, res: any, next: any) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Требуется авторизация" });
+  try {
+    req.user = jwt.verify(token, SECRET_KEY) as any;
+    next();
+  } catch {
+    return res.status(401).json({ error: "Токен недействителен или истёк" });
+  }
+};
+
+const adminMiddleware = (req: any, res: any, next: any) => {
+  if (req.user?.role !== "admin")
+    return res.status(403).json({ error: "Доступ запрещён" });
+  next();
+};
 
 app.get("/", (req: any, res: any) => {
   res.send("Server is running!");
@@ -54,6 +78,10 @@ app.post("/api/login", async (req: any, res: any) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await bcrypt.compare(password, user.password)))
       return res.status(400).json({ error: "Неверный email или пароль" });
+    if (user.isActive === false)
+      return res
+        .status(403)
+        .json({ error: "Аккаунт заблокирован. Обратитесь к администратору." });
     const token = jwt.sign({ userId: user.id, role: user.role }, SECRET_KEY, {
       expiresIn: "24h",
     });
@@ -73,9 +101,10 @@ app.post("/api/login", async (req: any, res: any) => {
   }
 });
 
-app.put("/api/profile", async (req: any, res: any) => {
+app.put("/api/profile", authMiddleware, async (req: any, res: any) => {
   try {
-    const { userId, name, surname, password, avatar } = req.body;
+    const userId = req.user.userId; // берём из токена, а не из тела
+    const { name, surname, password, avatar } = req.body;
     const updateData: any = { name, surname };
     if (avatar !== undefined) updateData.avatar = avatar;
     if (password && password.trim() !== "")
@@ -520,94 +549,148 @@ app.delete("/api/notifications/:id", async (req: any, res: any) => {
 // ─── ADMIN ─────────────────────────────────────────────────────────────────
 
 // Статистика платформы
-app.get("/api/admin/stats", async (req: any, res: any) => {
-  try {
-    const [users, courses, enrollments, completedEnrollments] =
-      await Promise.all([
-        prisma.user.count(),
-        prisma.course.count(),
-        prisma.enrollment.count(),
-        prisma.enrollment.count({ where: { status: "completed" } }),
-      ]);
-    res.json({ users, courses, enrollments, completedEnrollments });
-  } catch {
-    res.status(500).json({ error: "Ошибка" });
-  }
-});
+app.get(
+  "/api/admin/stats",
+  authMiddleware,
+  adminMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const [users, courses, enrollments, completedEnrollments] =
+        await Promise.all([
+          prisma.user.count(),
+          prisma.course.count(),
+          prisma.enrollment.count(),
+          prisma.enrollment.count({ where: { status: "completed" } }),
+        ]);
+      res.json({ users, courses, enrollments, completedEnrollments });
+    } catch {
+      res.status(500).json({ error: "Ошибка" });
+    }
+  },
+);
 
 // Все пользователи
-app.get("/api/admin/users", async (req: any, res: any) => {
-  try {
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        surname: true,
-        role: true,
-        createdAt: true,
-        _count: { select: { enrollments: true } },
-      },
-    });
-    res.json(users);
-  } catch {
-    res.status(500).json({ error: "Ошибка" });
-  }
-});
+app.get(
+  "/api/admin/users",
+  authMiddleware,
+  adminMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const users = await prisma.user.findMany({
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          surname: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          _count: { select: { enrollments: true } },
+        },
+      });
+      res.json(users);
+    } catch {
+      res.status(500).json({ error: "Ошибка" });
+    }
+  },
+);
 
 // Изменить роль пользователя
-app.put("/api/admin/users/:id/role", async (req: any, res: any) => {
-  try {
-    const { role } = req.body;
-    if (!["student", "admin"].includes(role))
-      return res.status(400).json({ error: "Недопустимая роль" });
-    const user = await prisma.user.update({
-      where: { id: Number(req.params.id) },
-      data: { role },
-      select: { id: true, email: true, name: true, role: true },
-    });
-    res.json(user);
-  } catch {
-    res.status(500).json({ error: "Ошибка" });
-  }
-});
+app.put(
+  "/api/admin/users/:id/role",
+  authMiddleware,
+  adminMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const { role } = req.body;
+      if (!["student", "admin"].includes(role))
+        return res.status(400).json({ error: "Недопустимая роль" });
+      const user = await prisma.user.update({
+        where: { id: Number(req.params.id) },
+        data: { role },
+        select: { id: true, email: true, name: true, role: true },
+      });
+      res.json(user);
+    } catch {
+      res.status(500).json({ error: "Ошибка" });
+    }
+  },
+);
 
 // Удалить пользователя
-app.delete("/api/admin/users/:id", async (req: any, res: any) => {
-  try {
-    await prisma.enrollment.deleteMany({
-      where: { userId: Number(req.params.id) },
-    });
-    await (prisma as any).notification.deleteMany({
-      where: { userId: Number(req.params.id) },
-    });
-    await prisma.user.delete({ where: { id: Number(req.params.id) } });
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Ошибка" });
-  }
-});
+app.delete(
+  "/api/admin/users/:id",
+  authMiddleware,
+  adminMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const uid = Number(req.params.id);
+      await prisma.enrollment.deleteMany({ where: { userId: uid } });
+      await (prisma as any).notification.deleteMany({ where: { userId: uid } });
+      await (prisma as any).comment.updateMany({
+        where: { userId: uid },
+        data: { userId: uid }, // сначала обнуляем ответы
+      });
+      await (prisma as any).comment.deleteMany({ where: { userId: uid } });
+      await prisma.user.delete({ where: { id: uid } });
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Ошибка" });
+    }
+  },
+);
+
+// Деактивировать / активировать пользователя
+app.put(
+  "/api/admin/users/:id/toggle-active",
+  authMiddleware,
+  adminMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const uid = Number(req.params.id);
+      const current = await prisma.user.findUnique({
+        where: { id: uid },
+        select: { isActive: true },
+      });
+      if (!current)
+        return res.status(404).json({ error: "Пользователь не найден" });
+      const updated = await prisma.user.update({
+        where: { id: uid },
+        data: { isActive: !current.isActive },
+        select: { id: true, email: true, isActive: true },
+      });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Ошибка" });
+    }
+  },
+);
 
 // Рассылка уведомлений всем пользователям
-app.post("/api/admin/notify-all", async (req: any, res: any) => {
-  try {
-    const { title, message } = req.body;
-    if (!title || !message)
-      return res.status(400).json({ error: "Заполните все поля" });
-    const users = await prisma.user.findMany({ select: { id: true } });
-    await Promise.all(
-      users.map((u) =>
-        (prisma as any).notification.create({
-          data: { userId: u.id, type: "announcement", title, message },
-        }),
-      ),
-    );
-    res.json({ sent: users.length });
-  } catch {
-    res.status(500).json({ error: "Ошибка при рассылке" });
-  }
-});
+app.post(
+  "/api/admin/notify-all",
+  authMiddleware,
+  adminMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const { title, message } = req.body;
+      if (!title || !message)
+        return res.status(400).json({ error: "Заполните все поля" });
+      const users = await prisma.user.findMany({ select: { id: true } });
+      await Promise.all(
+        users.map((u) =>
+          (prisma as any).notification.create({
+            data: { userId: u.id, type: "announcement", title, message },
+          }),
+        ),
+      );
+      res.json({ sent: users.length });
+    } catch {
+      res.status(500).json({ error: "Ошибка при рассылке" });
+    }
+  },
+);
 
 // ─── COMMENTS ─────────────────────────────────────────────────────────────
 
@@ -750,6 +833,48 @@ app.put("/api/comments/:id", async (req: any, res: any) => {
 });
 
 // ─── PASSWORD RECOVERY ─────────────────────────────────────────────────────
+
+// Верификация токена восстановления пароля
+app.get("/api/recovery/verify/:token", async (req: any, res: any) => {
+  try {
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: req.params.token,
+        resetTokenExpiry: { gt: new Date() },
+      },
+      select: { email: true },
+    });
+    if (!user)
+      return res.status(400).json({ error: "Токен недействителен или истёк" });
+    res.json({ email: user.email });
+  } catch {
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+// Запрос на сброс пароля (алиас для RecoveryPage)
+app.post("/api/recovery/request", async (req: any, res: any) => {
+  return req.app._router.handle(
+    Object.assign(req, {
+      url: "/api/forgot-password",
+      path: "/api/forgot-password",
+    }),
+    res,
+    () => {},
+  );
+});
+
+// Сброс пароля (алиас для RecoveryPage)
+app.post("/api/recovery/reset", async (req: any, res: any) => {
+  return req.app._router.handle(
+    Object.assign(req, {
+      url: "/api/reset-password",
+      path: "/api/reset-password",
+    }),
+    res,
+    () => {},
+  );
+});
 
 app.post("/api/forgot-password", async (req: any, res: any) => {
   try {

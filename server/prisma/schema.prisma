@@ -17,6 +17,7 @@ model User {
   createdAt           DateTime       @default(now())
   resetToken          String?
   resetTokenExpiry    DateTime?
+  isActive            Boolean        @default(true)
   enrollments         Enrollment[]
   notifications Notification[]
   comments      Comment[]

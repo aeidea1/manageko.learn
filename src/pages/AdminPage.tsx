@@ -13,6 +13,8 @@ import {
   BarChart2,
   Settings,
   X,
+  Ban,
+  CheckCircle,
 } from "lucide-react";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
@@ -93,6 +95,28 @@ export const AdminPage = () => {
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
       setDeleteModal(null);
       toast.success("Пользователь удалён");
+    } catch {
+      toast.error("Ошибка");
+    }
+  };
+
+  const handleToggleActive = async (user: any) => {
+    if (user.id === currentUser?.id) {
+      toast.error("Нельзя заблокировать себя");
+      return;
+    }
+    try {
+      const res = await api.put(`/admin/users/${user.id}/toggle-active`);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, isActive: res.data.isActive } : u,
+        ),
+      );
+      toast.success(
+        res.data.isActive
+          ? "Пользователь активирован"
+          : "Пользователь заблокирован",
+      );
     } catch {
       toast.error("Ошибка");
     }
@@ -470,11 +494,18 @@ export const AdminPage = () => {
                                   u.email[0].toUpperCase()}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-sm font-bold truncate">
-                                  {[u.name, u.surname]
-                                    .filter(Boolean)
-                                    .join(" ") || "—"}
-                                </p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-bold truncate">
+                                    {[u.name, u.surname]
+                                      .filter(Boolean)
+                                      .join(" ") || "—"}
+                                  </p>
+                                  {u.isActive === false && (
+                                    <span className="text-[10px] font-bold bg-red-100 text-red-500 px-1.5 py-0.5 rounded shrink-0">
+                                      Заблокирован
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-gray-400 truncate">
                                   {u.email}
                                 </p>
@@ -502,14 +533,31 @@ export const AdminPage = () => {
                                 <option value="admin">Администратор</option>
                               </select>
                             </div>
-                            <div className="col-span-2 flex justify-end">
+                            <div className="col-span-2 flex justify-end gap-1">
                               {u.id !== currentUser?.id ? (
-                                <button
-                                  onClick={() => setDeleteModal(u)}
-                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleToggleActive(u)}
+                                    title={
+                                      u.isActive === false
+                                        ? "Активировать"
+                                        : "Заблокировать"
+                                    }
+                                    className={`p-2 rounded-lg transition-colors ${u.isActive === false ? "text-green-500 hover:bg-green-50" : "text-gray-400 hover:text-yellow-500 hover:bg-yellow-50"}`}
+                                  >
+                                    {u.isActive === false ? (
+                                      <CheckCircle size={15} />
+                                    ) : (
+                                      <Ban size={15} />
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteModal(u)}
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </>
                               ) : (
                                 <span className="text-xs text-gray-300 italic">
                                   Вы
@@ -530,22 +578,46 @@ export const AdminPage = () => {
                                   u.email[0].toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold truncate">
-                                  {[u.name, u.surname]
-                                    .filter(Boolean)
-                                    .join(" ") || "—"}
-                                </p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-bold truncate">
+                                    {[u.name, u.surname]
+                                      .filter(Boolean)
+                                      .join(" ") || "—"}
+                                  </p>
+                                  {u.isActive === false && (
+                                    <span className="text-[10px] font-bold bg-red-100 text-red-500 px-1.5 py-0.5 rounded shrink-0">
+                                      Заблокирован
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-gray-400 truncate">
                                   {u.email}
                                 </p>
                               </div>
                               {u.id !== currentUser?.id && (
-                                <button
-                                  onClick={() => setDeleteModal(u)}
-                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => handleToggleActive(u)}
+                                    title={
+                                      u.isActive === false
+                                        ? "Активировать"
+                                        : "Заблокировать"
+                                    }
+                                    className={`p-2 rounded-lg transition-colors shrink-0 ${u.isActive === false ? "text-green-500 hover:bg-green-50" : "text-gray-400 hover:text-yellow-500 hover:bg-yellow-50"}`}
+                                  >
+                                    {u.isActive === false ? (
+                                      <CheckCircle size={15} />
+                                    ) : (
+                                      <Ban size={15} />
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteModal(u)}
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
                               )}
                             </div>
                             <div className="flex items-center justify-between gap-3">

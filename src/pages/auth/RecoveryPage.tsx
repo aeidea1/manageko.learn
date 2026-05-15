@@ -119,7 +119,7 @@ export const RecoveryPage = () => {
       >
         <div className="flex flex-col gap-4">
           <p className="text-xs text-gray-400 text-center">
-            Ссылка действительна 15 минут.
+            Ссылка действительна 1 час.
           </p>
           <Button
             onClick={() => {
