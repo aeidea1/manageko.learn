@@ -7,20 +7,31 @@ datasource db {
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  email         String         @unique
-  password      String
-  name          String?
-  surname       String?
-  role          String         @default("student")
-  avatar              String?
-  createdAt           DateTime       @default(now())
-  resetToken          String?
-  resetTokenExpiry    DateTime?
-  isActive            Boolean        @default(true)
-  enrollments         Enrollment[]
-  notifications Notification[]
-  comments      Comment[]
+  id               Int            @id @default(autoincrement())
+  email            String         @unique
+  password         String
+  name             String?
+  surname          String?
+  role             String         @default("student")
+  avatar           String?
+  createdAt        DateTime       @default(now())
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  isActive         Boolean        @default(true)
+  enrollments      Enrollment[]
+  notifications    Notification[]
+  comments         Comment[]
+  activities       UserActivity[]
+}
+
+model UserActivity {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
 }
 
 model Course {
@@ -38,19 +49,19 @@ model Course {
 }
 
 model Lesson {
-  id               Int                @id @default(autoincrement())
-  courseId         Int
-  course           Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title            String
-  order            Int
-  lectureText      String?
-  practiceTask     String?
-  mediaUrl         String?
-  practiceMediaUrl String?
-  documents        Document[]
+  id                Int                @id @default(autoincrement())
+  courseId          Int
+  course            Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title             String
+  order             Int
+  lectureText       String?
+  practiceTask      String?
+  mediaUrl          String?
+  practiceMediaUrl  String?
+  documents         Document[]
   practiceDocuments PracticeDocument[]
-  questions        Question[]
-  comments         Comment[]
+  questions         Question[]
+  comments          Comment[]
 }
 
 model Document {
@@ -92,6 +103,7 @@ model Enrollment {
   status    String   @default("in_progress")
   rating    Int?
   createdAt DateTime @default(now())
+
   @@unique([userId, courseId])
 }
 

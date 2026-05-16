@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 
-// Простой генератор сертификата через print
 const downloadCertificate = (
   userName: string,
   courseName: string,
@@ -79,18 +78,6 @@ const downloadCertificate = (
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
-const getActivityKey = (userId?: number) => {
-  const d = new Date();
-  const day = d.getDay() === 0 ? 7 : d.getDay();
-  const thursday = new Date(d);
-  thursday.setDate(d.getDate() + 4 - day);
-  const yearStart = new Date(thursday.getFullYear(), 0, 1);
-  const week = Math.ceil(
-    ((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-  );
-  return `activity_u${userId || 0}_${thursday.getFullYear()}_W${week}`;
-};
-
 export const ProfilePage = () => {
   const navigate = useNavigate();
   const userData = localStorage.getItem("user");
@@ -99,21 +86,27 @@ export const ProfilePage = () => {
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [activityDays, setActivityDays] = useState<boolean[]>(
+    Array(7).fill(false),
+  );
+  const [activityLoading, setActivityLoading] = useState(true);
 
   const jsDay = new Date().getDay();
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1;
-  const activityDays: boolean[] = (() => {
-    try {
-      const saved = localStorage.getItem(getActivityKey(user?.id));
-      if (saved) {
-        const p = JSON.parse(saved);
-        if (Array.isArray(p) && p.length === 7) return p;
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        const res = await api.get("/activity");
+        setActivityDays(res.data.activeDays);
+      } catch {
+        setActivityDays(Array(7).fill(false));
+      } finally {
+        setActivityLoading(false);
       }
-    } catch {}
-    const arr = Array(7).fill(false);
-    arr[currentDayIndex] = true;
-    return arr;
-  })();
+    };
+    fetchActivity();
+  }, []);
 
   useEffect(() => {
     if (!user?.id) {
@@ -161,7 +154,6 @@ export const ProfilePage = () => {
       <Header />
       <ProfileModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} />
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-8">
-        {/* Хлебные крошки */}
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
           <Link to="/dashboard" className="hover:text-[#0056D2]">
             Главная
@@ -171,10 +163,8 @@ export const ProfilePage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* ЛЕВАЯ КОЛОНКА — профиль */}
           <aside className="lg:col-span-3">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center sticky top-24">
-              {/* Аватар */}
               <div className="w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden border-4 border-gray-100 flex items-center justify-center bg-[#00205C] text-white text-2xl font-black">
                 {user.avatar ? (
                   <img
@@ -194,7 +184,6 @@ export const ProfilePage = () => {
                 {user.role === "admin" ? "Администратор" : "Студент"}
               </span>
 
-              {/* Быстрая статистика */}
               <div className="space-y-3 text-left border-t border-gray-100 pt-5">
                 {[
                   {
@@ -236,9 +225,7 @@ export const ProfilePage = () => {
             </div>
           </aside>
 
-          {/* ПРАВАЯ КОЛОНКА */}
           <div className="lg:col-span-9 space-y-6">
-            {/* Статистика */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {[
                 {
@@ -296,14 +283,18 @@ export const ProfilePage = () => {
                   >
                     <div
                       className={`w-full h-10 rounded-lg flex items-center justify-center transition-colors ${
-                        activityDays[idx]
-                          ? idx === currentDayIndex
-                            ? "bg-[#0056D2] text-white"
-                            : "bg-blue-100 text-[#0056D2]"
-                          : "bg-gray-100 text-gray-400"
+                        activityLoading
+                          ? "bg-gray-100 animate-pulse"
+                          : activityDays[idx]
+                            ? idx === currentDayIndex
+                              ? "bg-[#0056D2] text-white"
+                              : "bg-blue-100 text-[#0056D2]"
+                            : "bg-gray-100 text-gray-400"
                       }`}
                     >
-                      {activityDays[idx] && <CheckCircle2 size={14} />}
+                      {!activityLoading && activityDays[idx] && (
+                        <CheckCircle2 size={14} />
+                      )}
                     </div>
                     <span className="text-xs text-gray-500 uppercase">
                       {day}
@@ -327,7 +318,11 @@ export const ProfilePage = () => {
                   {completed.map((e) => {
                     const date = new Date(e.createdAt).toLocaleDateString(
                       "ru-RU",
-                      { day: "numeric", month: "long", year: "numeric" },
+                      {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      },
                     );
                     return (
                       <div
@@ -429,7 +424,6 @@ export const ProfilePage = () => {
               </div>
             )}
 
-            {/* Пусто */}
             {!isLoading && enrollments.length === 0 && (
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
                 <BookOpen size={40} className="text-gray-200 mx-auto mb-4" />

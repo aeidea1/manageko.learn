@@ -130,12 +130,14 @@ app.put("/api/profile", authMiddleware, async (req: any, res: any) => {
 
 app.get("/api/courses", async (req: any, res: any) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, page = "1", limit = "12" } = req.query;
+    const pageNum = Math.max(1, parseInt(String(page)));
+    const limitNum = Math.min(48, Math.max(1, parseInt(String(limit))));
+    const skip = (pageNum - 1) * limitNum;
+
     let where: any = {};
 
     if (category && search) {
-      // Ищем курсы у которых category совпадает с родительской категорией
-      // ИЛИ category совпадает с подкатегорией (search)
       where.OR = [
         { category: { equals: String(search), mode: "insensitive" } },
         { category: { contains: String(search), mode: "insensitive" } },
@@ -157,7 +159,6 @@ app.get("/api/courses", async (req: any, res: any) => {
         },
       ];
     } else if (category) {
-      // Только фильтр по категории — ищем по точному совпадению и по вхождению
       where.OR = [
         { category: { equals: String(category), mode: "insensitive" } },
         {
@@ -176,21 +177,34 @@ app.get("/api/courses", async (req: any, res: any) => {
       ];
     }
 
-    const courses = await prisma.course.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        lessons: {
-          orderBy: { order: "asc" },
-          include: {
-            questions: true,
-            documents: true,
-            practiceDocuments: true,
-          },
+    const [total, courses] = await Promise.all([
+      prisma.course.count({ where }),
+      prisma.course.findMany({
+        where,
+        orderBy: [{ students: "desc" }, { createdAt: "desc" }],
+        skip,
+        take: limitNum,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          skills: true,
+          category: true,
+          image: true,
+          rating: true,
+          students: true,
+          createdAt: true,
+          _count: { select: { lessons: true } },
         },
-      },
+      }),
+    ]);
+
+    res.json({
+      courses,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
     });
-    res.json(courses);
   } catch (error) {
     res.status(500).json({ error: "Ошибка при получении курсов" });
   }
@@ -953,6 +967,91 @@ app.post("/api/reset-password", async (req: any, res: any) => {
     res.json({ message: "Пароль успешно изменён" });
   } catch (error) {
     res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+// ─── ACTIVITY ─────────────────────────────────────────────────────────────
+
+app.post("/api/activity", authMiddleware, async (req: any, res: any) => {
+  try {
+    const userId = req.user.userId;
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    await (prisma as any).userActivity.upsert({
+      where: { userId_date: { userId, date: today } },
+      update: {},
+      create: { userId, date: today },
+    });
+
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка при сохранении активности" });
+  }
+});
+
+app.get("/api/activity", authMiddleware, async (req: any, res: any) => {
+  try {
+    const userId = req.user.userId;
+
+    const now = new Date();
+    const day = now.getDay() === 0 ? 7 : now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day - 1));
+    monday.setUTCHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setUTCHours(23, 59, 59, 999);
+
+    const records = await (prisma as any).userActivity.findMany({
+      where: {
+        userId,
+        date: { gte: monday, lte: sunday },
+      },
+      select: { date: true },
+    });
+
+    const activeDays: boolean[] = Array(7).fill(false);
+    records.forEach(({ date }: { date: Date }) => {
+      const d = new Date(date);
+      const idx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      activeDays[idx] = true;
+    });
+
+    res.json({ activeDays });
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка при получении активности" });
+  }
+});
+
+// ─── POPULAR CATEGORIES ───────────────────────────────────────────────────
+
+app.get("/api/popular-categories", async (req: any, res: any) => {
+  try {
+    const result = await prisma.$queryRaw<
+      { category: string; count: bigint; students: bigint }[]
+    >`
+      SELECT
+        category,
+        COUNT(*) as count,
+        COALESCE(SUM(students), 0) as students
+      FROM "Course"
+      WHERE category IS NOT NULL AND category != ''
+      GROUP BY category
+      ORDER BY students DESC, count DESC
+      LIMIT 8
+    `;
+
+    const categories = result.map((r) => ({
+      category: r.category,
+      count: Number(r.count),
+      students: Number(r.students),
+    }));
+
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка при получении категорий" });
   }
 });
 

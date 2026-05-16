@@ -1,9 +1,22 @@
 import { useNavigate } from "react-router-dom";
 
+// ─── БАГ #1 (исправлен): ────────────────────────────────────────────────────
+// Раньше при клике на подкатегорию (например "Дизайнер UI/UX") в URL уходило:
+//   ?category=Дизайн и Искусство&search=UI/UX
+// Сервер искал курсы, у которых category СОДЕРЖИТ "Дизайн" И title/skills содержит "UI/UX".
+// Если курс создан с category="Дизайнер UI/UX" — он НЕ находился, т.к. "Дизайнер UI/UX"
+// не содержит "Дизайн" (с заглавной "Д" — совпадало, но при insensitive ок).
+// Реальная проблема: значение search не совпадало с реальным полем category в БД.
+//
+// ИСПРАВЛЕНИЕ: search теперь содержит точное значение category из БД (value),
+// а не произвольное ключевое слово. Это гарантирует точное совпадение.
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface CategorySection {
   title: string;
-  category: string; // Значение поля category в БД
-  items: { label: string; search: string }[];
+  category: string;
+  // value — точное значение поля category в БД для подкатегории
+  items: { label: string; value: string }[];
 }
 
 const categoryData: CategorySection[] = [
@@ -11,44 +24,47 @@ const categoryData: CategorySection[] = [
     title: "Компьютерные науки",
     category: "Компьютерные науки",
     items: [
-      { label: "Разработка на Python", search: "Python" },
-      { label: "Веб-разработка (Fullstack)", search: "Fullstack" },
-      { label: "Мобильная разработка", search: "Мобильная" },
-      { label: "Кибербезопасность", search: "Кибербезопасность" },
-      { label: "Облачные вычисления", search: "Облачные" },
+      { label: "Разработка на Python", value: "Разработка на Python" },
+      {
+        label: "Веб-разработка (Fullstack)",
+        value: "Веб-разработка (Fullstack)",
+      },
+      { label: "Мобильная разработка", value: "Мобильная разработка" },
+      { label: "Кибербезопасность", value: "Кибербезопасность" },
+      { label: "Облачные вычисления", value: "Облачные вычисления" },
     ],
   },
   {
     title: "Дизайн и Искусство",
     category: "Дизайн и Искусство",
     items: [
-      { label: "Дизайнер UI/UX", search: "UI/UX" },
-      { label: "Графический дизайн", search: "Графический" },
-      { label: "Иллюстрация и рисунок", search: "Иллюстрация" },
-      { label: "Анимация и 3D", search: "Анимация" },
-      { label: "Брендинг", search: "Брендинг" },
+      { label: "Дизайнер UI/UX", value: "Дизайнер UI/UX" },
+      { label: "Графический дизайн", value: "Графический дизайн" },
+      { label: "Иллюстрация и рисунок", value: "Иллюстрация и рисунок" },
+      { label: "Анимация и 3D", value: "Анимация и 3D" },
+      { label: "Брендинг", value: "Брендинг" },
     ],
   },
   {
     title: "Бизнес и Маркетинг",
     category: "Бизнес и Маркетинг",
     items: [
-      { label: "Руководитель проекта", search: "Менеджмент" },
-      { label: "Цифровой маркетинг", search: "Маркетинг" },
-      { label: "Управление продуктом", search: "Продукт" },
-      { label: "Финансовая грамотность", search: "Финансы" },
-      { label: "SMM специалист", search: "SMM" },
+      { label: "Руководитель проекта", value: "Руководитель проекта" },
+      { label: "Цифровой маркетинг", value: "Цифровой маркетинг" },
+      { label: "Управление продуктом", value: "Управление продуктом" },
+      { label: "Финансовая грамотность", value: "Финансовая грамотность" },
+      { label: "SMM специалист", value: "SMM специалист" },
     ],
   },
   {
     title: "Данные и ИИ",
     category: "Данные и ИИ",
     items: [
-      { label: "Аналитик данных", search: "Аналитика" },
-      { label: "Машинное обучение", search: "ML" },
-      { label: "Data Science", search: "Data Science" },
-      { label: "Работа с нейросетями", search: "ИИ" },
-      { label: "Бизнес-аналитика", search: "Бизнес-аналитика" },
+      { label: "Аналитик данных", value: "Аналитик данных" },
+      { label: "Машинное обучение", value: "Машинное обучение" },
+      { label: "Data Science", value: "Data Science" },
+      { label: "Работа с нейросетями", value: "Работа с нейросетями" },
+      { label: "Бизнес-аналитика", value: "Бизнес-аналитика" },
     ],
   },
 ];
@@ -60,16 +76,16 @@ interface ExploreMenuProps {
 export const ExploreMenu = ({ onClose }: ExploreMenuProps) => {
   const navigate = useNavigate();
 
+  // Клик по заголовку раздела — фильтр по родительской категории
   const handleCategoryClick = (category: string) => {
     navigate(`/dashboard?category=${encodeURIComponent(category)}`);
     onClose?.();
   };
 
-  // Пункт подкатегории — ищем по category родителя + search слово
-  const handleItemClick = (parentCategory: string, search: string) => {
-    navigate(
-      `/dashboard?category=${encodeURIComponent(parentCategory)}&search=${encodeURIComponent(search)}`,
-    );
+  // Клик по подкатегории — фильтр по точному значению category из БД
+  // БАГ ИСПРАВЛЕН: передаём value напрямую как category, без search
+  const handleItemClick = (value: string) => {
+    navigate(`/dashboard?category=${encodeURIComponent(value)}`);
     onClose?.();
   };
 
@@ -87,7 +103,7 @@ export const ExploreMenu = ({ onClose }: ExploreMenuProps) => {
             {section.items.map((item, i) => (
               <li
                 key={i}
-                onClick={() => handleItemClick(section.category, item.search)}
+                onClick={() => handleItemClick(item.value)}
                 className="text-[13px] text-gray-600 hover:text-[#0056D2] hover:translate-x-1 cursor-pointer transition-all duration-200 flex items-center gap-2 group"
               >
                 <span className="w-1 h-1 bg-gray-300 rounded-full group-hover:bg-[#0056D2] transition-colors shrink-0" />

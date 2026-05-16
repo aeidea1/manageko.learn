@@ -1,52 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Header } from "../components/Header";
 import { CourseCard } from "../components/CourseCard";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
-const SKILL_TAGS = [
-  "Python",
-  "Kotlin",
-  "React",
-  "Vue",
-  "Lua",
-  "Figma",
-  "UI/UX",
-];
 
-// Надёжный ключ: год + номер недели ISO (по понедельнику)
-const getActivityKey = (userId?: number) => {
-  const d = new Date();
-  const day = d.getDay() === 0 ? 7 : d.getDay();
-  const thursday = new Date(d);
-  thursday.setDate(d.getDate() + 4 - day);
-  const yearStart = new Date(thursday.getFullYear(), 0, 1);
-  const week = Math.ceil(
-    ((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-  );
-  return `activity_u${userId || 0}_${thursday.getFullYear()}_W${week}`;
-};
+const COURSES_PER_PAGE = 12;
 
-// Инициализируем активность с сегодняшним днём
-const initActivity = (currentDayIndex: number, userId?: number): boolean[] => {
-  try {
-    const saved = localStorage.getItem(getActivityKey(userId));
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length === 7) {
-        if (!parsed[currentDayIndex]) {
-          parsed[currentDayIndex] = true;
-          localStorage.setItem(getActivityKey(userId), JSON.stringify(parsed));
-        }
-        return parsed;
-      }
-    }
-  } catch {}
-  const arr = Array(7).fill(false);
-  arr[currentDayIndex] = true;
-  localStorage.setItem(getActivityKey(userId), JSON.stringify(arr));
-  return arr;
+// Иконки для категорий
+const CATEGORY_ICONS: Record<string, string> = {
+  "Компьютерные науки": "💻",
+  "Дизайн и Искусство": "🎨",
+  "Бизнес и Маркетинг": "📈",
+  "Данные и ИИ": "🤖",
+  "Разработка на Python": "🐍",
+  "Веб-разработка (Fullstack)": "🌐",
+  "Мобильная разработка": "📱",
+  Кибербезопасность: "🔒",
+  "Облачные вычисления": "☁️",
+  "Дизайнер UI/UX": "✏️",
+  "Графический дизайн": "🖼️",
+  "Машинное обучение": "🧠",
+  "Data Science": "📊",
+  "Аналитик данных": "📉",
+  "Цифровой маркетинг": "📣",
 };
 
 export const DashboardPage = () => {
@@ -58,6 +37,20 @@ export const DashboardPage = () => {
   const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSkill, setActiveSkill] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCourses, setTotalCourses] = useState(0);
+
+  // Активность — теперь с сервера
+  const [activityDays, setActivityDays] = useState<boolean[]>(
+    Array(7).fill(false),
+  );
+  const [activityLoading, setActivityLoading] = useState(true);
+
+  // Популярные категории — с сервера
+  const [popularCategories, setPopularCategories] = useState<
+    { category: string; count: number; students: number }[]
+  >([]);
 
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
@@ -65,43 +58,106 @@ export const DashboardPage = () => {
   const jsDay = new Date().getDay();
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1;
 
-  const [activityDays, setActivityDays] = useState<boolean[]>(() =>
-    initActivity(currentDayIndex, user?.id),
-  );
-
+  // ── Синхронизация активности ──────────────────────────────────────────────
   useEffect(() => {
-    setActivityDays(initActivity(currentDayIndex, user?.id));
+    const syncActivity = async () => {
+      setActivityLoading(true);
+      try {
+        // Записываем сегодняшний визит
+        await api.post("/activity");
+        // Получаем данные за неделю
+        const res = await api.get("/activity");
+        setActivityDays(res.data.activeDays);
+      } catch {
+        // fallback: localStorage если сервер недоступен
+        try {
+          const key = `activity_u${user?.id || 0}_fallback`;
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length === 7) {
+              setActivityDays(parsed);
+            }
+          }
+        } catch {}
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+    syncActivity();
   }, []);
 
+  // ── Популярные категории с сервера ────────────────────────────────────────
   useEffect(() => {
-    const fetchCourses = async () => {
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get("/popular-categories");
+        setPopularCategories(res.data);
+      } catch {
+        // fallback: статичный список
+        setPopularCategories([
+          { category: "Компьютерные науки", count: 0, students: 0 },
+          { category: "Дизайн и Искусство", count: 0, students: 0 },
+          { category: "Данные и ИИ", count: 0, students: 0 },
+          { category: "Бизнес и Маркетинг", count: 0, students: 0 },
+        ]);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // ── Курсы с пагинацией ────────────────────────────────────────────────────
+  const fetchCourses = useCallback(
+    async (page: number) => {
       setIsLoading(true);
       try {
-        const params: any = {};
+        const params: any = { page, limit: COURSES_PER_PAGE };
         if (categoryParam) params.category = categoryParam;
         if (searchQuery) params.search = searchQuery;
+        if (activeSkill) params.search = activeSkill;
+
         const response = await api.get("/courses", { params });
-        setCourses(response.data);
+
+        // Поддержка старого API (массив) и нового (объект с пагинацией)
+        if (Array.isArray(response.data)) {
+          setCourses(response.data);
+          setTotalPages(1);
+          setTotalCourses(response.data.length);
+        } else {
+          setCourses(response.data.courses);
+          setTotalPages(response.data.totalPages);
+          setTotalCourses(response.data.total);
+        }
       } catch (error) {
         console.error(error);
       } finally {
         setIsLoading(false);
       }
-    };
-    fetchCourses();
-  }, [searchQuery, categoryParam]);
+    },
+    [searchQuery, categoryParam, activeSkill],
+  );
 
-  // Локальный фильтр по тегу навыка
-  const filteredCourses = activeSkill
-    ? courses.filter((c) => c.skills && c.skills.includes(activeSkill))
-    : courses;
+  // Сбрасываем страницу при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryParam, activeSkill]);
+
+  useEffect(() => {
+    fetchCourses(currentPage);
+  }, [fetchCourses, currentPage]);
 
   const activeDaysCount = activityDays.filter(Boolean).length;
 
   const getPageTitle = () => {
+    if (activeSkill) return `Навык: ${activeSkill}`;
     if (categoryParam) return `Категория: ${categoryParam}`;
     if (searchQuery) return `Результаты поиска: «${searchQuery}»`;
     return "Наиболее популярные курсы";
+  };
+
+  const handlePageChange = (p: number) => {
+    setCurrentPage(p);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -109,7 +165,7 @@ export const DashboardPage = () => {
       <Header />
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          {/* САЙДБАР */}
+          {/* ── САЙДБАР ───────────────────────────────────────────────────── */}
           <aside className="md:col-span-4 lg:col-span-3 flex flex-col gap-6 md:gap-8">
             <div>
               <h1 className="text-xl md:text-2xl font-bold mb-2">
@@ -121,6 +177,7 @@ export const DashboardPage = () => {
             </div>
             <hr className="border-gray-200 hidden md:block" />
 
+            {/* Активность за неделю */}
             <div>
               <h2 className="font-bold text-base mb-3">Активность за неделю</h2>
               <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-3 max-w-[280px]">
@@ -131,7 +188,15 @@ export const DashboardPage = () => {
                     <div
                       key={day}
                       className={`aspect-square flex items-center justify-center rounded text-xs uppercase font-medium border transition-colors
-                      ${isToday ? "bg-[#0056D2] text-white border-[#0056D2] shadow" : isActive ? "bg-blue-100 text-[#0056D2] border-blue-200 font-bold" : "border-gray-300 text-gray-400"}`}
+                      ${
+                        activityLoading
+                          ? "border-gray-100 bg-gray-50 text-gray-300 animate-pulse"
+                          : isToday
+                            ? "bg-[#0056D2] text-white border-[#0056D2] shadow"
+                            : isActive
+                              ? "bg-blue-100 text-[#0056D2] border-blue-200 font-bold"
+                              : "border-gray-300 text-gray-400"
+                      }`}
                     >
                       {day}
                     </div>
@@ -144,22 +209,50 @@ export const DashboardPage = () => {
               </p>
             </div>
 
+            {/* Популярные категории — реальные данные */}
             <div>
               <h2 className="font-bold text-xl mb-4 text-black">
                 Популярные категории
               </h2>
-              <div className="flex flex-wrap gap-2">
-                {SKILL_TAGS.map((tag) => (
-                  <span
-                    key={tag}
-                    onClick={() =>
-                      setActiveSkill(activeSkill === tag ? null : tag)
-                    }
-                    className={`px-4 py-2 rounded-full text-xs font-bold shadow-sm cursor-pointer transition-colors ${activeSkill === tag ? "bg-[#0056D2] text-white" : "bg-[#555d6b] text-white hover:bg-gray-700"}`}
-                  >
-                    {tag}
-                  </span>
-                ))}
+              <div className="flex flex-col gap-2">
+                {popularCategories.length > 0
+                  ? popularCategories.map((item) => (
+                      <button
+                        key={item.category}
+                        onClick={() =>
+                          navigate(
+                            `/dashboard?category=${encodeURIComponent(item.category)}`,
+                          )
+                        }
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all border
+                        ${
+                          categoryParam === item.category
+                            ? "bg-[#0056D2] text-white border-[#0056D2]"
+                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0056D2]"
+                        }`}
+                      >
+                        <span className="text-base shrink-0">
+                          {CATEGORY_ICONS[item.category] || "📚"}
+                        </span>
+                        <span className="flex-1 truncate">{item.category}</span>
+                        {item.count > 0 && (
+                          <span
+                            className={`text-xs shrink-0 ${categoryParam === item.category ? "text-blue-200" : "text-gray-400"}`}
+                          >
+                            {item.count}
+                          </span>
+                        )}
+                      </button>
+                    ))
+                  : // skeleton loading
+                    Array(4)
+                      .fill(0)
+                      .map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-10 bg-gray-100 rounded-lg animate-pulse"
+                        />
+                      ))}
               </div>
               {(activeSkill || categoryParam || searchQuery) && (
                 <button
@@ -175,9 +268,21 @@ export const DashboardPage = () => {
             </div>
           </aside>
 
-          {/* КУРСЫ */}
+          {/* ── КУРСЫ ─────────────────────────────────────────────────────── */}
           <section className="md:col-span-8 lg:col-span-9">
-            <h2 className="text-2xl font-bold mb-4">{getPageTitle()}</h2>
+            <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+              <h2 className="text-2xl font-bold">{getPageTitle()}</h2>
+              {!isLoading && totalCourses > 0 && (
+                <span className="text-sm text-gray-400">
+                  {totalCourses}{" "}
+                  {totalCourses === 1
+                    ? "курс"
+                    : totalCourses < 5
+                      ? "курса"
+                      : "курсов"}
+                </span>
+              )}
+            </div>
 
             {categoryParam && (
               <div className="flex items-center gap-2 mb-4">
@@ -194,11 +299,23 @@ export const DashboardPage = () => {
             )}
 
             {isLoading ? (
-              <div className="flex items-center gap-3 text-gray-500">
-                <div className="w-5 h-5 border-2 border-[#0056D2] border-t-transparent rounded-full animate-spin" />
-                Загрузка курсов...
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array(6)
+                  .fill(0)
+                  .map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-gray-100 overflow-hidden"
+                    >
+                      <div className="aspect-[16/9] bg-gray-100 animate-pulse" />
+                      <div className="p-4 space-y-2">
+                        <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" />
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                      </div>
+                    </div>
+                  ))}
               </div>
-            ) : filteredCourses.length === 0 ? (
+            ) : courses.length === 0 ? (
               <div className="text-center py-16 border border-dashed border-gray-200 rounded-lg">
                 <p className="text-gray-500 mb-3">
                   По вашему запросу курсов не найдено.
@@ -214,22 +331,82 @@ export const DashboardPage = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((course) => (
-                  <CourseCard
-                    key={course.id}
-                    title={course.title}
-                    image={course.image}
-                    skills={course.skills ? course.skills.join(", ") : ""}
-                    rating={course.rating || 0}
-                    students={`${course.students || 0} учеников`}
-                    category={course.category}
-                    onButtonClick={() =>
-                      navigate("/course", { state: { course } })
-                    }
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {courses.map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      title={course.title}
+                      image={course.image}
+                      skills={course.skills ? course.skills.join(", ") : ""}
+                      rating={course.rating || 0}
+                      students={`${course.students || 0} учеников`}
+                      category={course.category}
+                      onButtonClick={() =>
+                        navigate("/course", { state: { course } })
+                      }
+                    />
+                  ))}
+                </div>
+
+                {/* ── Пагинация ── */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-10">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-[#0056D2] hover:text-[#0056D2] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(
+                        (p) =>
+                          p === 1 ||
+                          p === totalPages ||
+                          Math.abs(p - currentPage) <= 1,
+                      )
+                      .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1)
+                          acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((item, idx) =>
+                        item === "..." ? (
+                          <span
+                            key={`dots-${idx}`}
+                            className="px-2 text-gray-400"
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={item}
+                            onClick={() => handlePageChange(item as number)}
+                            className={`w-9 h-9 rounded-lg text-sm font-bold border transition-colors
+                              ${
+                                currentPage === item
+                                  ? "bg-[#0056D2] text-white border-[#0056D2]"
+                                  : "border-gray-200 text-gray-700 hover:border-[#0056D2] hover:text-[#0056D2]"
+                              }`}
+                          >
+                            {item}
+                          </button>
+                        ),
+                      )}
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-[#0056D2] hover:text-[#0056D2] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
