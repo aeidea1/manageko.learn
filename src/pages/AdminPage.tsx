@@ -7,6 +7,7 @@ import {
   TrendingUp,
   CheckCircle2,
   ChevronRight,
+  ChevronLeft,
   Trash2,
   Bell,
   Search,
@@ -15,11 +16,15 @@ import {
   X,
   Ban,
   CheckCircle,
+  UserX,
 } from "lucide-react";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
 type AdminTab = "stats" | "users" | "notify";
+type UserListTab = "active" | "deactivated";
+
+const USERS_PER_PAGE = 15;
 
 export const AdminPage = () => {
   const navigate = useNavigate();
@@ -27,11 +32,17 @@ export const AdminPage = () => {
   const currentUser = userData ? JSON.parse(userData) : null;
 
   const [tab, setTab] = useState<AdminTab>("stats");
+  const [userListTab, setUserListTab] = useState<UserListTab>("active");
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [searchUser, setSearchUser] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState<any>(null);
+  const [usersPage, setUsersPage] = useState(1);
+
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifMessage, setNotifMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     if (currentUser?.role !== "admin") {
@@ -44,6 +55,11 @@ export const AdminPage = () => {
   useEffect(() => {
     if (tab === "users" && users.length === 0) loadUsers();
   }, [tab]);
+
+  // Сбрасываем страницу при смене фильтра
+  useEffect(() => {
+    setUsersPage(1);
+  }, [userListTab, searchUser]);
 
   const loadStats = async () => {
     setIsLoading(true);
@@ -102,7 +118,7 @@ export const AdminPage = () => {
 
   const handleToggleActive = async (user: any) => {
     if (user.id === currentUser?.id) {
-      toast.error("Нельзя заблокировать себя");
+      toast.error("Нельзя деактивировать себя");
       return;
     }
     try {
@@ -113,30 +129,16 @@ export const AdminPage = () => {
         ),
       );
       toast.success(
-        res.data.isActive
-          ? "Пользователь активирован"
-          : "Пользователь заблокирован",
+        res.data.isActive ? "Аккаунт активирован" : "Аккаунт деактивирован",
       );
     } catch {
       toast.error("Ошибка");
     }
   };
 
-  const filteredUsers = users.filter((u) =>
-    [u.name, u.surname, u.email]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase()
-      .includes(searchUser.toLowerCase()),
-  );
-
-  const [notifTitle, setNotifTitle] = useState("");
-  const [notifMessage, setNotifMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
-
   const handleSendNotification = async () => {
     if (!notifTitle.trim() || !notifMessage.trim()) {
-      toast.error("Заполните заголовок и текст уведомления");
+      toast.error("Заполните заголовок и текст");
       return;
     }
     setIsSending(true);
@@ -155,11 +157,48 @@ export const AdminPage = () => {
     }
   };
 
+  // ── фильтрация и пагинация пользователей ─────────────────────────────────
+  const activeUsers = users.filter((u) => u.isActive !== false);
+  const deactivatedUsers = users.filter((u) => u.isActive === false);
+  const displayUsers =
+    userListTab === "active" ? activeUsers : deactivatedUsers;
+
+  const filteredUsers = displayUsers.filter((u) =>
+    [u.name, u.surname, u.email]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(searchUser.toLowerCase()),
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredUsers.length / USERS_PER_PAGE),
+  );
+  const pagedUsers = filteredUsers.slice(
+    (usersPage - 1) * USERS_PER_PAGE,
+    usersPage * USERS_PER_PAGE,
+  );
+
   const TABS = [
     { id: "stats" as AdminTab, label: "Статистика", icon: BarChart2 },
     { id: "users" as AdminTab, label: "Пользователи", icon: Users },
     { id: "notify" as AdminTab, label: "Уведомления", icon: Bell },
   ];
+
+  const roleLabel = (role: string) => {
+    if (role === "admin") return "Администратор";
+    if (role === "teacher") return "Преподаватель";
+    return "Студент";
+  };
+
+  const roleColor = (role: string) => {
+    if (role === "admin")
+      return "bg-purple-50 text-purple-700 border-purple-200";
+    if (role === "teacher")
+      return "bg-green-50 text-green-700 border-green-200";
+    return "bg-blue-50 text-[#0056D2] border-blue-200";
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -205,7 +244,6 @@ export const AdminPage = () => {
       )}
 
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-8">
-        {/* Хлебные крошки */}
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
           <Link to="/dashboard" className="hover:text-[#0056D2]">
             Главная
@@ -215,19 +253,14 @@ export const AdminPage = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* НАВИГАЦИЯ — горизонтальная на мобиле, вертикальная на десктопе */}
+          {/* САЙДБАР */}
           <aside className="lg:w-56 shrink-0">
-            {/* Мобиль */}
             <div className="lg:hidden flex gap-2 overflow-x-auto pb-1">
               {TABS.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors shrink-0 ${
-                    tab === t.id
-                      ? "bg-[#0056D2] text-white"
-                      : "bg-white text-gray-600 border border-gray-200"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors shrink-0 ${tab === t.id ? "bg-[#0056D2] text-white" : "bg-white text-gray-600 border border-gray-200"}`}
                 >
                   <t.icon size={15} /> {t.label}
                 </button>
@@ -240,7 +273,6 @@ export const AdminPage = () => {
               </Link>
             </div>
 
-            {/* Десктоп */}
             <div className="hidden lg:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
               <div className="p-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -260,11 +292,7 @@ export const AdminPage = () => {
                   <button
                     key={t.id}
                     onClick={() => setTab(t.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors text-left ${
-                      tab === t.id
-                        ? "bg-[#0056D2] text-white"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors text-left ${tab === t.id ? "bg-[#0056D2] text-white" : "text-gray-600 hover:bg-gray-50"}`}
                   >
                     <t.icon size={16} /> {t.label}
                   </button>
@@ -283,13 +311,12 @@ export const AdminPage = () => {
 
           {/* КОНТЕНТ */}
           <div className="flex-1 min-w-0">
-            {/* СТАТИСТИКА */}
+            {/* ── СТАТИСТИКА ── */}
             {tab === "stats" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-black text-black">
                   Обзор платформы
                 </h1>
-
                 {isLoading ? (
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[...Array(4)].map((_, i) => (
@@ -352,53 +379,48 @@ export const AdminPage = () => {
                             Конверсия завершения
                           </h3>
                           <div className="space-y-3">
-                            <div>
-                              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                <span>Завершили курс</span>
-                                <span className="font-bold text-black">
-                                  {stats.enrollments > 0
+                            {[
+                              {
+                                label: "Завершили курс",
+                                value:
+                                  stats.enrollments > 0
                                     ? Math.round(
                                         (stats.completedEnrollments /
                                           stats.enrollments) *
                                           100,
                                       )
-                                    : 0}
-                                  %
-                                </span>
-                              </div>
-                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-green-500 rounded-full transition-all"
-                                  style={{
-                                    width: `${stats.enrollments > 0 ? Math.round((stats.completedEnrollments / stats.enrollments) * 100) : 0}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                <span>В процессе</span>
-                                <span className="font-bold text-black">
-                                  {stats.enrollments > 0
+                                    : 0,
+                                color: "bg-green-500",
+                              },
+                              {
+                                label: "В процессе",
+                                value:
+                                  stats.enrollments > 0
                                     ? Math.round(
                                         ((stats.enrollments -
                                           stats.completedEnrollments) /
                                           stats.enrollments) *
                                           100,
                                       )
-                                    : 0}
-                                  %
-                                </span>
+                                    : 0,
+                                color: "bg-[#0056D2]",
+                              },
+                            ].map((bar, i) => (
+                              <div key={i}>
+                                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                  <span>{bar.label}</span>
+                                  <span className="font-bold text-black">
+                                    {bar.value}%
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full ${bar.color} rounded-full transition-all`}
+                                    style={{ width: `${bar.value}%` }}
+                                  />
+                                </div>
                               </div>
-                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-[#0056D2] rounded-full"
-                                  style={{
-                                    width: `${stats.enrollments > 0 ? Math.round(((stats.enrollments - stats.completedEnrollments) / stats.enrollments) * 100) : 0}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
+                            ))}
                           </div>
                         </div>
 
@@ -430,7 +452,7 @@ export const AdminPage = () => {
                               className="w-full flex items-center justify-between text-sm text-gray-600 hover:text-[#0056D2] py-2"
                             >
                               <span className="flex items-center gap-2">
-                                <BarChart2 size={14} /> Все курсы
+                                <Bell size={14} /> Рассылка уведомлений
                               </span>
                               <ChevronRight size={14} />
                             </button>
@@ -443,7 +465,7 @@ export const AdminPage = () => {
               </div>
             )}
 
-            {/* ПОЛЬЗОВАТЕЛИ */}
+            {/* ── ПОЛЬЗОВАТЕЛИ ── */}
             {tab === "users" && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-4">
@@ -464,6 +486,34 @@ export const AdminPage = () => {
                   </div>
                 </div>
 
+                {/* Переключатель активные / деактивированные */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setUserListTab("active")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors border ${userListTab === "active" ? "bg-[#0056D2] text-white border-[#0056D2]" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
+                  >
+                    <Users size={14} />
+                    Активные
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded-full ${userListTab === "active" ? "bg-white/20" : "bg-gray-100"}`}
+                    >
+                      {activeUsers.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setUserListTab("deactivated")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors border ${userListTab === "deactivated" ? "bg-red-500 text-white border-red-500" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
+                  >
+                    <UserX size={14} />
+                    Деактивированные
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded-full ${userListTab === "deactivated" ? "bg-white/20" : "bg-gray-100"}`}
+                    >
+                      {deactivatedUsers.length}
+                    </span>
+                  </button>
+                </div>
+
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                   {isLoading ? (
                     <div className="p-8 text-center text-gray-400 text-sm">
@@ -471,41 +521,36 @@ export const AdminPage = () => {
                     </div>
                   ) : filteredUsers.length === 0 ? (
                     <div className="p-8 text-center text-gray-400 text-sm">
-                      Пользователи не найдены
+                      {userListTab === "deactivated"
+                        ? "Деактивированных аккаунтов нет"
+                        : "Пользователи не найдены"}
                     </div>
                   ) : (
                     <>
-                      {/* Десктоп — таблица */}
+                      {/* Десктоп */}
                       <div className="hidden md:block divide-y divide-gray-100">
                         <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                          <div className="col-span-5">Пользователь</div>
+                          <div className="col-span-4">Пользователь</div>
                           <div className="col-span-2 text-center">Курсов</div>
                           <div className="col-span-3">Роль</div>
-                          <div className="col-span-2 text-right">Действия</div>
+                          <div className="col-span-3 text-right">Действия</div>
                         </div>
-                        {filteredUsers.map((u) => (
+                        {pagedUsers.map((u) => (
                           <div
                             key={u.id}
                             className="grid grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-gray-50/50 transition-colors"
                           >
-                            <div className="col-span-5 flex items-center gap-3 min-w-0">
+                            <div className="col-span-4 flex items-center gap-3 min-w-0">
                               <div className="w-9 h-9 rounded-full bg-[#00205C] text-white flex items-center justify-center text-sm font-bold shrink-0">
                                 {u.name?.[0]?.toUpperCase() ||
                                   u.email[0].toUpperCase()}
                               </div>
                               <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-bold truncate">
-                                    {[u.name, u.surname]
-                                      .filter(Boolean)
-                                      .join(" ") || "—"}
-                                  </p>
-                                  {u.isActive === false && (
-                                    <span className="text-[10px] font-bold bg-red-100 text-red-500 px-1.5 py-0.5 rounded shrink-0">
-                                      Заблокирован
-                                    </span>
-                                  )}
-                                </div>
+                                <p className="text-sm font-bold truncate">
+                                  {[u.name, u.surname]
+                                    .filter(Boolean)
+                                    .join(" ") || "—"}
+                                </p>
                                 <p className="text-xs text-gray-400 truncate">
                                   {u.email}
                                 </p>
@@ -517,43 +562,52 @@ export const AdminPage = () => {
                               </span>
                             </div>
                             <div className="col-span-3">
-                              <select
-                                value={u.role}
-                                onChange={(e) =>
-                                  handleRoleChange(u.id, e.target.value)
-                                }
-                                disabled={u.id === currentUser?.id}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none cursor-pointer transition-colors ${
-                                  u.role === "admin"
-                                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                                    : "bg-blue-50 text-[#0056D2] border-blue-200"
-                                } ${u.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : ""}`}
-                              >
-                                <option value="student">Студент</option>
-                                <option value="admin">Администратор</option>
-                              </select>
+                              {u.id === currentUser?.id ? (
+                                <span
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-full border ${roleColor(u.role)}`}
+                                >
+                                  {roleLabel(u.role)}
+                                </span>
+                              ) : (
+                                <select
+                                  value={u.role}
+                                  onChange={(e) =>
+                                    handleRoleChange(u.id, e.target.value)
+                                  }
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none cursor-pointer transition-colors ${roleColor(u.role)}`}
+                                >
+                                  <option value="student">Студент</option>
+                                  <option value="teacher">Преподаватель</option>
+                                  <option value="admin">Администратор</option>
+                                </select>
+                              )}
                             </div>
-                            <div className="col-span-2 flex justify-end gap-1">
+                            <div className="col-span-3 flex justify-end gap-1">
                               {u.id !== currentUser?.id ? (
                                 <>
                                   <button
                                     onClick={() => handleToggleActive(u)}
                                     title={
                                       u.isActive === false
-                                        ? "Активировать"
-                                        : "Заблокировать"
+                                        ? "Активировать аккаунт"
+                                        : "Деактивировать аккаунт"
                                     }
-                                    className={`p-2 rounded-lg transition-colors ${u.isActive === false ? "text-green-500 hover:bg-green-50" : "text-gray-400 hover:text-yellow-500 hover:bg-yellow-50"}`}
+                                    className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-colors ${u.isActive === false ? "text-green-600 bg-green-50 hover:bg-green-100" : "text-orange-500 bg-orange-50 hover:bg-orange-100"}`}
                                   >
                                     {u.isActive === false ? (
-                                      <CheckCircle size={15} />
+                                      <>
+                                        <CheckCircle size={13} /> Активировать
+                                      </>
                                     ) : (
-                                      <Ban size={15} />
+                                      <>
+                                        <Ban size={13} /> Деактивировать
+                                      </>
                                     )}
                                   </button>
                                   <button
                                     onClick={() => setDeleteModal(u)}
                                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Удалить навсегда"
                                   >
                                     <Trash2 size={15} />
                                   </button>
@@ -568,9 +622,9 @@ export const AdminPage = () => {
                         ))}
                       </div>
 
-                      {/* Мобиль — карточки */}
+                      {/* Мобиль */}
                       <div className="md:hidden divide-y divide-gray-100">
-                        {filteredUsers.map((u) => (
+                        {pagedUsers.map((u) => (
                           <div key={u.id} className="p-4 space-y-3">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-[#00205C] text-white flex items-center justify-center text-sm font-bold shrink-0">
@@ -578,81 +632,113 @@ export const AdminPage = () => {
                                   u.email[0].toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-bold truncate">
-                                    {[u.name, u.surname]
-                                      .filter(Boolean)
-                                      .join(" ") || "—"}
-                                  </p>
-                                  {u.isActive === false && (
-                                    <span className="text-[10px] font-bold bg-red-100 text-red-500 px-1.5 py-0.5 rounded shrink-0">
-                                      Заблокирован
-                                    </span>
-                                  )}
-                                </div>
+                                <p className="text-sm font-bold truncate">
+                                  {[u.name, u.surname]
+                                    .filter(Boolean)
+                                    .join(" ") || "—"}
+                                </p>
                                 <p className="text-xs text-gray-400 truncate">
                                   {u.email}
                                 </p>
                               </div>
-                              {u.id !== currentUser?.id && (
-                                <div className="flex gap-1">
-                                  <button
-                                    onClick={() => handleToggleActive(u)}
-                                    title={
-                                      u.isActive === false
-                                        ? "Активировать"
-                                        : "Заблокировать"
-                                    }
-                                    className={`p-2 rounded-lg transition-colors shrink-0 ${u.isActive === false ? "text-green-500 hover:bg-green-50" : "text-gray-400 hover:text-yellow-500 hover:bg-yellow-50"}`}
-                                  >
-                                    {u.isActive === false ? (
-                                      <CheckCircle size={15} />
-                                    ) : (
-                                      <Ban size={15} />
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteModal(u)}
-                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                                  >
-                                    <Trash2 size={15} />
-                                  </button>
-                                </div>
-                              )}
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-xs text-gray-500">
                                 {u._count?.enrollments || 0} курсов
                               </span>
-                              <select
-                                value={u.role}
-                                onChange={(e) =>
-                                  handleRoleChange(u.id, e.target.value)
-                                }
-                                disabled={u.id === currentUser?.id}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none cursor-pointer ${
-                                  u.role === "admin"
-                                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                                    : "bg-blue-50 text-[#0056D2] border-blue-200"
-                                } ${u.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : ""}`}
-                              >
-                                <option value="student">Студент</option>
-                                <option value="admin">Администратор</option>
-                              </select>
+                              {u.id !== currentUser?.id ? (
+                                <select
+                                  value={u.role}
+                                  onChange={(e) =>
+                                    handleRoleChange(u.id, e.target.value)
+                                  }
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none ${roleColor(u.role)}`}
+                                >
+                                  <option value="student">Студент</option>
+                                  <option value="teacher">Преподаватель</option>
+                                  <option value="admin">Администратор</option>
+                                </select>
+                              ) : (
+                                <span
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-full border ${roleColor(u.role)}`}
+                                >
+                                  {roleLabel(u.role)}
+                                </span>
+                              )}
                             </div>
+                            {u.id !== currentUser?.id && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleToggleActive(u)}
+                                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-colors ${u.isActive === false ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-500"}`}
+                                >
+                                  {u.isActive === false ? (
+                                    <>
+                                      <CheckCircle size={13} /> Активировать
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban size={13} /> Деактивировать
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => setDeleteModal(u)}
+                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
                     </>
                   )}
                 </div>
-                <p className="text-xs text-gray-400">
-                  Всего: {filteredUsers.length} пользователей
-                </p>
+
+                {/* Пагинация */}
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <p className="text-xs text-gray-400">
+                    Показано {Math.min(pagedUsers.length, USERS_PER_PAGE)} из{" "}
+                    {filteredUsers.length} пользователей
+                  </p>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setUsersPage((p) => Math.max(1, p - 1))}
+                        disabled={usersPage === 1}
+                        className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-[#0056D2] hover:text-[#0056D2] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                        (p) => (
+                          <button
+                            key={p}
+                            onClick={() => setUsersPage(p)}
+                            className={`w-8 h-8 rounded-lg text-sm font-bold border transition-colors ${usersPage === p ? "bg-[#0056D2] text-white border-[#0056D2]" : "border-gray-200 text-gray-700 hover:border-[#0056D2]"}`}
+                          >
+                            {p}
+                          </button>
+                        ),
+                      )}
+                      <button
+                        onClick={() =>
+                          setUsersPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        disabled={usersPage === totalPages}
+                        className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-[#0056D2] hover:text-[#0056D2] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* УВЕДОМЛЕНИЯ */}
+            {/* ── УВЕДОМЛЕНИЯ ── */}
             {tab === "notify" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-black text-black">
@@ -661,7 +747,7 @@ export const AdminPage = () => {
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
                   <p className="text-sm text-gray-500">
                     Отправьте уведомление всем зарегистрированным пользователям
-                    платформы. Оно появится в колоколе уведомлений.
+                    платформы.
                   </p>
                   <div>
                     <p className="text-xs font-bold mb-2">Заголовок</p>

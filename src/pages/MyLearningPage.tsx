@@ -6,39 +6,23 @@ import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
-const CATEGORIES = [
-  "Python",
-  "Kotlin",
-  "React",
-  "Vue",
-  "Lua",
-  "Figma",
-  "UI/UX",
-];
 
-const getActivityKey = (userId?: number) => {
-  const d = new Date();
-  const day = d.getDay() === 0 ? 7 : d.getDay();
-  const thursday = new Date(d);
-  thursday.setDate(d.getDate() + 4 - day);
-  const yearStart = new Date(thursday.getFullYear(), 0, 1);
-  const week = Math.ceil(
-    ((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-  );
-  return `activity_u${userId || 0}_${thursday.getFullYear()}_W${week}`;
-};
-
-const readActivity = (currentDayIndex: number, userId?: number): boolean[] => {
-  try {
-    const saved = localStorage.getItem(getActivityKey(userId));
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length === 7) return parsed;
-    }
-  } catch {}
-  const arr = Array(7).fill(false);
-  arr[currentDayIndex] = true;
-  return arr;
+const CATEGORY_ICONS: Record<string, string> = {
+  "Компьютерные науки": "💻",
+  "Дизайн и Искусство": "🎨",
+  "Бизнес и Маркетинг": "📈",
+  "Данные и ИИ": "🤖",
+  "Разработка на Python": "🐍",
+  "Веб-разработка (Fullstack)": "🌐",
+  "Мобильная разработка": "📱",
+  Кибербезопасность: "🔒",
+  "Облачные вычисления": "☁️",
+  "Дизайнер UI/UX": "✏️",
+  "Графический дизайн": "🖼️",
+  "Машинное обучение": "🧠",
+  "Data Science": "📊",
+  "Аналитик данных": "📉",
+  "Цифровой маркетинг": "📣",
 };
 
 export const MyLearningPage = () => {
@@ -48,6 +32,13 @@ export const MyLearningPage = () => {
   );
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activityDays, setActivityDays] = useState<boolean[]>(
+    Array(7).fill(false),
+  );
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [popularCategories, setPopularCategories] = useState<
+    { category: string; count: number }[]
+  >([]);
 
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
@@ -55,30 +46,44 @@ export const MyLearningPage = () => {
   const jsDay = new Date().getDay();
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1;
 
-  const [activityDays] = useState<boolean[]>(() =>
-    readActivity(currentDayIndex, user?.id),
-  );
-
-  const activeDaysCount = activityDays.filter(Boolean).length;
-
+  // Активность с сервера
   useEffect(() => {
-    if (!user?.id) return;
-    const fetchEnrollments = async () => {
+    const syncActivity = async () => {
       try {
-        const response = await api.get(`/my-courses/${user.id}`);
-        setEnrollments(response.data);
-      } catch (error) {
-        toast.error("Ошибка загрузки курсов");
+        await api.post("/activity");
+        const res = await api.get("/activity");
+        setActivityDays(res.data.activeDays);
+      } catch {
+        setActivityDays(Array(7).fill(false));
       } finally {
-        setIsLoading(false);
+        setActivityLoading(false);
       }
     };
-    fetchEnrollments();
+    syncActivity();
+  }, []);
+
+  // Популярные категории с сервера
+  useEffect(() => {
+    api
+      .get("/popular-categories")
+      .then((res) => setPopularCategories(res.data))
+      .catch(() => {});
+  }, []);
+
+  // Курсы пользователя
+  useEffect(() => {
+    if (!user?.id) return;
+    api
+      .get(`/my-courses/${user.id}`)
+      .then((res) => setEnrollments(res.data))
+      .catch(() => toast.error("Ошибка загрузки курсов"))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const inProgress = enrollments.filter((e) => e.status === "in_progress");
   const completed = enrollments.filter((e) => e.status === "completed");
   const displayList = activeTab === "progress" ? inProgress : completed;
+  const activeDaysCount = activityDays.filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -86,7 +91,7 @@ export const MyLearningPage = () => {
 
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 py-8">
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8 md:gap-10">
-          {/* САЙДБАР — идентичен Dashboard */}
+          {/* ── САЙДБАР ── */}
           <aside className="lg:col-span-3 flex flex-col gap-6 md:gap-8">
             <div>
               <h1 className="text-xl md:text-2xl font-bold mb-2">
@@ -99,7 +104,7 @@ export const MyLearningPage = () => {
 
             <hr className="border-gray-200 hidden md:block" />
 
-            {/* КАЛЕНДАРЬ — тот же что на Dashboard */}
+            {/* Активность */}
             <div>
               <h2 className="font-bold text-base mb-3">Активность за неделю</h2>
               <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-3 max-w-[280px]">
@@ -111,11 +116,13 @@ export const MyLearningPage = () => {
                       key={day}
                       className={`aspect-square flex items-center justify-center rounded text-xs uppercase font-medium border transition-colors
                         ${
-                          isToday
-                            ? "bg-[#0056D2] text-white border-[#0056D2] shadow"
-                            : isActive
-                              ? "bg-blue-100 text-[#0056D2] border-blue-200 font-bold"
-                              : "border-gray-300 text-gray-400"
+                          activityLoading
+                            ? "border-gray-100 bg-gray-50 text-gray-300 animate-pulse"
+                            : isToday
+                              ? "bg-[#0056D2] text-white border-[#0056D2] shadow"
+                              : isActive
+                                ? "bg-blue-100 text-[#0056D2] border-blue-200 font-bold"
+                                : "border-gray-300 text-gray-400"
                         }`}
                     >
                       {day}
@@ -129,27 +136,47 @@ export const MyLearningPage = () => {
               </p>
             </div>
 
+            {/* Популярные категории — реальные данные */}
             <div>
               <h2 className="font-bold text-xl mb-4 text-black">
                 Популярные категории
               </h2>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((cat) => (
-                  <span
-                    key={cat}
-                    onClick={() =>
-                      navigate(`/dashboard?search=${encodeURIComponent(cat)}`)
-                    }
-                    className="px-4 py-2 bg-[#555d6b] text-white rounded-full text-xs font-bold shadow-sm cursor-pointer hover:bg-[#0056D2] transition-colors"
-                  >
-                    {cat}
-                  </span>
-                ))}
+              <div className="flex flex-col gap-2">
+                {popularCategories.length > 0
+                  ? popularCategories.map((item) => (
+                      <button
+                        key={item.category}
+                        onClick={() =>
+                          navigate(
+                            `/dashboard?category=${encodeURIComponent(item.category)}`,
+                          )
+                        }
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm font-medium bg-gray-50 text-gray-700 border border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0056D2] transition-all"
+                      >
+                        <span className="text-base shrink-0">
+                          {CATEGORY_ICONS[item.category] || "📚"}
+                        </span>
+                        <span className="flex-1 truncate">{item.category}</span>
+                        {item.count > 0 && (
+                          <span className="text-xs text-gray-400 shrink-0">
+                            {item.count}
+                          </span>
+                        )}
+                      </button>
+                    ))
+                  : Array(4)
+                      .fill(0)
+                      .map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-10 bg-gray-100 rounded-lg animate-pulse"
+                        />
+                      ))}
               </div>
             </div>
           </aside>
 
-          {/* ОСНОВНОЙ КОНТЕНТ */}
+          {/* ── ОСНОВНОЙ КОНТЕНТ ── */}
           <section className="lg:col-span-9">
             <h2 className="text-2xl font-bold mb-4">
               {activeTab === "progress"
@@ -157,25 +184,20 @@ export const MyLearningPage = () => {
                 : "Пройденные курсы"}
             </h2>
 
-            {/* Вкладки */}
             <div className="flex gap-2 mb-6">
-              {(["progress", "completed"] as const).map((tab) => (
+              {(["progress", "completed"] as const).map((t) => (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
-                    activeTab === tab
-                      ? "bg-[#555d6b] text-white"
-                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                  }`}
+                  key={t}
+                  onClick={() => setActiveTab(t)}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === t ? "bg-[#0056D2] text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}
                 >
-                  {tab === "progress" ? "В процессе" : "Пройденные"}
-                  {tab === "progress" && inProgress.length > 0 && (
+                  {t === "progress" ? "В процессе" : "Пройденные"}
+                  {t === "progress" && inProgress.length > 0 && (
                     <span className="ml-2 bg-white/20 text-xs px-1.5 py-0.5 rounded-full">
                       {inProgress.length}
                     </span>
                   )}
-                  {tab === "completed" && completed.length > 0 && (
+                  {t === "completed" && completed.length > 0 && (
                     <span className="ml-2 bg-white/20 text-xs px-1.5 py-0.5 rounded-full">
                       {completed.length}
                     </span>
@@ -185,9 +207,21 @@ export const MyLearningPage = () => {
             </div>
 
             {isLoading ? (
-              <div className="flex items-center gap-3 text-gray-500">
-                <div className="w-5 h-5 border-2 border-[#0056D2] border-t-transparent rounded-full animate-spin" />
-                Загрузка...
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array(3)
+                  .fill(0)
+                  .map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-gray-100 overflow-hidden"
+                    >
+                      <div className="aspect-[16/9] bg-gray-100 animate-pulse" />
+                      <div className="p-4 space-y-2">
+                        <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" />
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                      </div>
+                    </div>
+                  ))}
               </div>
             ) : displayList.length === 0 ? (
               <div className="text-center py-16 border border-dashed border-gray-200 rounded-lg">

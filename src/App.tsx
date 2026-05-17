@@ -22,16 +22,17 @@ const GuestRoute = ({ children }: { children: React.ReactNode }) => {
 
 const ProtectedRoute = ({
   children,
-  adminOnly = false,
+  roles,
 }: {
   children: React.ReactNode;
-  adminOnly?: boolean;
+  // roles: список допустимых ролей. Если не передан — любой авторизованный.
+  roles?: string[];
 }) => {
   const token = localStorage.getItem("token");
   if (!token) return <Navigate to="/login" replace />;
-  if (adminOnly) {
+  if (roles) {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (user.role !== "admin") return <Navigate to="/dashboard" replace />;
+    if (!roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;
 };
@@ -75,6 +76,8 @@ function App() {
               </GuestRoute>
             }
           />
+
+          {/* Любой авторизованный */}
           <Route
             path="/dashboard"
             element={
@@ -88,14 +91,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyLearningPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminPage />
               </ProtectedRoute>
             }
           />
@@ -123,10 +118,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Только admin */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Преподаватель ИЛИ admin */}
           <Route
             path="/manager"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute roles={["teacher", "admin"]}>
                 <CourseManagerPage />
               </ProtectedRoute>
             }
@@ -134,11 +141,12 @@ function App() {
           <Route
             path="/editor"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute roles={["teacher", "admin"]}>
                 <CourseEditorPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/"
             element={

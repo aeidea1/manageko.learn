@@ -48,6 +48,17 @@ const adminMiddleware = (req: any, res: any, next: any) => {
   next();
 };
 
+const teacherMiddleware = (req: any, res: any, next: any) => {
+  if (!["admin", "teacher"].includes(req.user?.role))
+    return res
+      .status(403)
+      .json({
+        error:
+          "Доступ запрещён: требуется роль преподавателя или администратора",
+      });
+  next();
+};
+
 app.get("/", (req: any, res: any) => {
   res.send("Server is running!");
 });
@@ -132,7 +143,7 @@ app.get("/api/courses", async (req: any, res: any) => {
   try {
     const { category, search, page = "1", limit = "12" } = req.query;
     const pageNum = Math.max(1, parseInt(String(page)));
-    const limitNum = Math.min(48, Math.max(1, parseInt(String(limit))));
+    const limitNum = Math.min(999, Math.max(1, parseInt(String(limit))));
     const skip = (pageNum - 1) * limitNum;
 
     let where: any = {};
@@ -618,7 +629,7 @@ app.put(
   async (req: any, res: any) => {
     try {
       const { role } = req.body;
-      if (!["student", "admin"].includes(role))
+      if (!["student", "teacher", "admin"].includes(role))
         return res.status(400).json({ error: "Недопустимая роль" });
       const user = await prisma.user.update({
         where: { id: Number(req.params.id) },
@@ -970,20 +981,18 @@ app.post("/api/reset-password", async (req: any, res: any) => {
   }
 });
 
-// ─── ACTIVITY ─────────────────────────────────────────────────────────────
+// ─── ACTIVITY ────────────────────────────────────────────────────────────────
 
 app.post("/api/activity", authMiddleware, async (req: any, res: any) => {
   try {
     const userId = req.user.userId;
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
-
     await (prisma as any).userActivity.upsert({
       where: { userId_date: { userId, date: today } },
       update: {},
       create: { userId, date: today },
     });
-
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: "Ошибка при сохранении активности" });
@@ -993,63 +1002,51 @@ app.post("/api/activity", authMiddleware, async (req: any, res: any) => {
 app.get("/api/activity", authMiddleware, async (req: any, res: any) => {
   try {
     const userId = req.user.userId;
-
     const now = new Date();
     const day = now.getDay() === 0 ? 7 : now.getDay();
     const monday = new Date(now);
     monday.setDate(now.getDate() - (day - 1));
     monday.setUTCHours(0, 0, 0, 0);
-
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     sunday.setUTCHours(23, 59, 59, 999);
-
     const records = await (prisma as any).userActivity.findMany({
-      where: {
-        userId,
-        date: { gte: monday, lte: sunday },
-      },
+      where: { userId, date: { gte: monday, lte: sunday } },
       select: { date: true },
     });
-
     const activeDays: boolean[] = Array(7).fill(false);
     records.forEach(({ date }: { date: Date }) => {
       const d = new Date(date);
       const idx = d.getDay() === 0 ? 6 : d.getDay() - 1;
       activeDays[idx] = true;
     });
-
     res.json({ activeDays });
   } catch (error) {
     res.status(500).json({ error: "Ошибка при получении активности" });
   }
 });
 
-// ─── POPULAR CATEGORIES ───────────────────────────────────────────────────
+// ─── POPULAR CATEGORIES ───────────────────────────────────────────────────────
 
 app.get("/api/popular-categories", async (req: any, res: any) => {
   try {
     const result = await prisma.$queryRaw<
       { category: string; count: bigint; students: bigint }[]
     >`
-      SELECT
-        category,
-        COUNT(*) as count,
-        COALESCE(SUM(students), 0) as students
+      SELECT category, COUNT(*) as count, COALESCE(SUM(students), 0) as students
       FROM "Course"
       WHERE category IS NOT NULL AND category != ''
       GROUP BY category
       ORDER BY students DESC, count DESC
       LIMIT 8
     `;
-
-    const categories = result.map((r) => ({
-      category: r.category,
-      count: Number(r.count),
-      students: Number(r.students),
-    }));
-
-    res.json(categories);
+    res.json(
+      result.map((r) => ({
+        category: r.category,
+        count: Number(r.count),
+        students: Number(r.students),
+      })),
+    );
   } catch (error) {
     res.status(500).json({ error: "Ошибка при получении категорий" });
   }

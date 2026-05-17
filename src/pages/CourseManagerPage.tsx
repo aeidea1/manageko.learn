@@ -8,7 +8,6 @@ import { api } from "../lib/api";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
-// Модалка подтверждения удаления
 const DeleteModal = ({
   course,
   onConfirm,
@@ -61,10 +60,23 @@ export const CourseManagerPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const userData = localStorage.getItem("user");
+  const user = userData ? JSON.parse(userData) : null;
+
+  // ИСПРАВЛЕНИЕ: менеджер курсов должен грузить ВСЕ курсы без пагинации
+  // Используем отдельный эндпоинт /api/courses/all или limit=999
   const fetchCourses = async () => {
+    setIsLoading(true);
     try {
-      const response = await api.get("/courses");
-      setCourses(response.data);
+      // Запрашиваем все курсы с большим лимитом — пагинация не нужна в менеджере
+      const response = await api.get("/courses", {
+        params: { limit: 999, page: 1 },
+      });
+      // Поддержка обоих форматов ответа: массив (старый) и объект (новый с пагинацией)
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.courses;
+      setCourses(data);
     } catch (error) {
       toast.error("Ошибка загрузки курсов");
     } finally {
@@ -73,6 +85,11 @@ export const CourseManagerPage = () => {
   };
 
   useEffect(() => {
+    // Проверяем доступ: teacher или admin
+    if (!user || !["teacher", "admin"].includes(user.role)) {
+      navigate("/dashboard");
+      return;
+    }
     fetchCourses();
   }, []);
 
@@ -106,7 +123,20 @@ export const CourseManagerPage = () => {
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 py-10">
-        <h1 className="text-2xl font-bold mb-6 text-black">Менеджер курсов</h1>
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-black">Менеджер курсов</h1>
+            <p className="text-sm text-gray-400 mt-1">
+              {user?.role === "admin" ? "Администратор" : "Преподаватель"} ·{" "}
+              {courses.length}{" "}
+              {courses.length === 1
+                ? "курс"
+                : courses.length < 5
+                  ? "курса"
+                  : "курсов"}
+            </p>
+          </div>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative w-full sm:w-[360px]">
@@ -133,16 +163,28 @@ export const CourseManagerPage = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center gap-3 text-gray-500">
-            <div className="w-5 h-5 border-2 border-[#0056D2] border-t-transparent rounded-full animate-spin" />
-            Загрузка курсов...
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array(8)
+              .fill(0)
+              .map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg border border-gray-100 overflow-hidden"
+                >
+                  <div className="aspect-[16/9] bg-gray-100 animate-pulse" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                  </div>
+                </div>
+              ))}
           </div>
         ) : filteredCourses.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-gray-200 rounded-lg">
             <p className="text-gray-500">
               {searchQuery
                 ? "По запросу ничего не найдено."
-                : "У вас пока нет созданных курсов."}
+                : "Пока нет ни одного курса."}
             </p>
           </div>
         ) : (
