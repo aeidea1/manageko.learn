@@ -18,6 +18,11 @@ model User {
   resetToken       String?
   resetTokenExpiry DateTime?
   isActive         Boolean        @default(true)
+  bio              String?
+  github           String?
+  vk               String?
+  telegram         String?
+  coverColor       String?        @default("#0056D2")
   enrollments      Enrollment[]
   notifications    Notification[]
   comments         Comment[]

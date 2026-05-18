@@ -28,6 +28,16 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Цифровой маркетинг": "📣",
 };
 
+const SKILL_TAGS = [
+  "Python",
+  "Kotlin",
+  "React",
+  "Vue",
+  "Lua",
+  "Figma",
+  "UI/UX",
+];
+
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -209,50 +219,23 @@ export const DashboardPage = () => {
               </p>
             </div>
 
-            {/* Популярные категории — реальные данные */}
+            {/* Популярные теги */}
             <div>
               <h2 className="font-bold text-xl mb-4 text-black">
-                Популярные категории
+                Популярные теги
               </h2>
-              <div className="flex flex-col gap-2">
-                {popularCategories.length > 0
-                  ? popularCategories.map((item) => (
-                      <button
-                        key={item.category}
-                        onClick={() =>
-                          navigate(
-                            `/dashboard?category=${encodeURIComponent(item.category)}`,
-                          )
-                        }
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all border
-                        ${
-                          categoryParam === item.category
-                            ? "bg-[#0056D2] text-white border-[#0056D2]"
-                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0056D2]"
-                        }`}
-                      >
-                        <span className="text-base shrink-0">
-                          {CATEGORY_ICONS[item.category] || "📚"}
-                        </span>
-                        <span className="flex-1 truncate">{item.category}</span>
-                        {item.count > 0 && (
-                          <span
-                            className={`text-xs shrink-0 ${categoryParam === item.category ? "text-blue-200" : "text-gray-400"}`}
-                          >
-                            {item.count}
-                          </span>
-                        )}
-                      </button>
-                    ))
-                  : // skeleton loading
-                    Array(4)
-                      .fill(0)
-                      .map((_, i) => (
-                        <div
-                          key={i}
-                          className="h-10 bg-gray-100 rounded-lg animate-pulse"
-                        />
-                      ))}
+              <div className="flex flex-wrap gap-2">
+                {SKILL_TAGS.map((tag) => (
+                  <span
+                    key={tag}
+                    onClick={() =>
+                      setActiveSkill(activeSkill === tag ? null : tag)
+                    }
+                    className={`px-4 py-2 rounded-full text-xs font-bold shadow-sm cursor-pointer transition-colors ${activeSkill === tag ? "bg-[#0056D2] text-white" : "bg-[#555d6b] text-white hover:bg-gray-700"}`}
+                  >
+                    {tag}
+                  </span>
+                ))}
               </div>
               {(activeSkill || categoryParam || searchQuery) && (
                 <button

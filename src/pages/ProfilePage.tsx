@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
 import { ProfileModal } from "../components/ProfileModal";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   BookOpen,
   CheckCircle2,
@@ -12,10 +12,14 @@ import {
   Calendar,
   ChevronRight,
   Download,
+  Github,
+  ExternalLink,
+  Send,
+  Palette,
+  Edit2,
 } from "lucide-react";
 import { api } from "../lib/api";
 
-// Простой генератор сертификата через print
 const downloadCertificate = (
   userName: string,
   courseName: string,
@@ -23,63 +27,179 @@ const downloadCertificate = (
 ) => {
   const win = window.open("", "_blank");
   if (!win) return;
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8"/>
-      <title>Сертификат — ${courseName}</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', Arial, sans-serif; background: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .cert { width: 900px; min-height: 620px; border: 2px solid #0056D2; border-radius: 16px; padding: 60px; position: relative; overflow: hidden; }
-        .cert::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 8px; background: #0056D2; }
-        .cert::after { content: 'M'; position: absolute; right: -20px; bottom: -40px; font-size: 300px; font-weight: 900; color: rgba(0,86,210,0.04); line-height: 1; }
-        .brand { font-size: 28px; font-weight: 900; color: #0056D2; letter-spacing: -1px; margin-bottom: 40px; }
-        .label { font-size: 13px; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
-        .title { font-size: 48px; font-weight: 900; color: #111827; line-height: 1.1; margin-bottom: 32px; }
-        .subtitle { font-size: 18px; color: #6b7280; margin-bottom: 8px; }
-        .name { font-size: 36px; font-weight: 900; color: #0056D2; margin-bottom: 32px; }
-        .course-label { font-size: 13px; color: #9ca3af; margin-bottom: 8px; }
-        .course { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 48px; }
-        .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #e5e7eb; padding-top: 32px; }
-        .date { font-size: 14px; color: #9ca3af; }
-        .sign { text-align: right; }
-        .sign-line { width: 180px; border-top: 2px solid #111827; margin-bottom: 8px; }
-        .sign-name { font-size: 14px; font-weight: 700; }
-        .sign-role { font-size: 12px; color: #9ca3af; }
-        .badge { display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; color: #0056D2; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 99px; border: 1px solid #bfdbfe; margin-bottom: 48px; }
-        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-      </style>
-    </head>
-    <body>
-      <div class="cert">
-        <div class="brand">Manageko</div>
-        <div class="badge">✓ Подтверждённый сертификат</div>
-        <div class="label">Настоящим удостоверяется, что</div>
-        <div class="name">${userName}</div>
-        <div class="subtitle">успешно прошёл(а) курс</div>
-        <div class="course">${courseName}</div>
-        <div class="footer">
-          <div class="date">Дата выдачи: ${date}</div>
-          <div class="sign">
-            <div class="sign-line"></div>
-            <div class="sign-name">Manageko Inc.</div>
-            <div class="sign-role">Образовательная платформа</div>
-          </div>
-        </div>
-      </div>
-      <script>setTimeout(() => window.print(), 500);</script>
-    </body>
-    </html>
-  `);
+  win.document.write(
+    `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Сертификат</title><style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.cert{width:900px;min-height:620px;border:2px solid #0056D2;border-radius:16px;padding:60px;position:relative;overflow:hidden}.cert::before{content:'';position:absolute;top:0;left:0;right:0;height:8px;background:#0056D2}.brand{font-size:28px;font-weight:900;color:#0056D2;margin-bottom:40px}.badge{display:inline-flex;background:#eff6ff;color:#0056D2;font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px;border:1px solid #bfdbfe;margin-bottom:48px}.label{font-size:13px;color:#9ca3af;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}.name{font-size:36px;font-weight:900;color:#0056D2;margin-bottom:32px}.subtitle{font-size:18px;color:#6b7280;margin-bottom:8px}.course{font-size:22px;font-weight:700;color:#111827;margin-bottom:48px}.footer{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #e5e7eb;padding-top:32px}.date{font-size:14px;color:#9ca3af}.sign{text-align:right}.sign-line{width:180px;border-top:2px solid #111827;margin-bottom:8px}.sign-name{font-size:14px;font-weight:700}.sign-role{font-size:12px;color:#9ca3af}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="cert"><div class="brand">Manageko</div><div class="badge">✓ Подтверждённый сертификат</div><div class="label">Настоящим удостоверяется, что</div><div class="name">${userName}</div><div class="subtitle">успешно прошёл(а) курс</div><div class="course">${courseName}</div><div class="footer"><div class="date">Дата выдачи: ${date}</div><div class="sign"><div class="sign-line"></div><div class="sign-name">Manageko Inc.</div><div class="sign-role">Образовательная платформа</div></div></div></div><script>setTimeout(()=>window.print(),500)</script></body></html>`,
+  );
   win.document.close();
 };
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
+const COVER_COLORS = [
+  "#0056D2",
+  "#00205C",
+  "#6d28d9",
+  "#059669",
+  "#dc2626",
+  "#d97706",
+  "#db2777",
+  "#0891b2",
+  "#374151",
+  "#1d4ed8",
+];
+
+const roleLabel = (role: string) => {
+  if (role === "admin") return "Администратор";
+  if (role === "teacher") return "Преподаватель";
+  return "Студент";
+};
+const roleBadgeClass = (role: string) => {
+  if (role === "admin") return "bg-purple-50 text-purple-700 border-purple-200";
+  if (role === "teacher") return "bg-green-50 text-green-700 border-green-200";
+  return "bg-blue-50 text-[#0056D2] border-blue-200";
+};
+
+// Публичный профиль
+const PublicProfile = ({ userId }: { userId: number }) => {
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get(`/profile/${userId}`)
+      .then((res) => setProfile(res.data))
+      .catch(() => navigate("/dashboard"))
+      .finally(() => setIsLoading(false));
+  }, [userId]);
+
+  if (isLoading)
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-[#0056D2] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  if (!profile) return null;
+
+  const fullName =
+    [profile.name, profile.surname].filter(Boolean).join(" ") || "Пользователь";
+  const initials =
+    (profile.name?.[0] || "") + (profile.surname?.[0] || "") || "?";
+  const coverColor = profile.coverColor || "#0056D2";
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Header />
+      <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-8">
+        <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm mb-6 bg-white">
+          <div
+            className="h-32 relative"
+            style={{ backgroundColor: coverColor }}
+          />
+          <div className="px-6 pb-6 -mt-10">
+            <div className="w-20 h-20 rounded-2xl border-4 border-white overflow-hidden bg-[#00205C] text-white text-2xl font-black flex items-center justify-center shadow mb-3">
+              {profile.avatar ? (
+                <img
+                  src={profile.avatar}
+                  alt="avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                initials
+              )}
+            </div>
+            <div className="flex items-start justify-between flex-wrap gap-3">
+              <div>
+                <h1 className="text-2xl font-black text-black">{fullName}</h1>
+                <span
+                  className={`inline-block text-xs font-bold px-3 py-1 rounded-full border mt-1 ${roleBadgeClass(profile.role)}`}
+                >
+                  {roleLabel(profile.role)}
+                </span>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                {profile.github && (
+                  <a
+                    href={`https://github.com/${profile.github.replace("@", "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-black transition-colors"
+                  >
+                    <Github size={16} /> {profile.github}
+                  </a>
+                )}
+                {profile.vk && (
+                  <a
+                    href={`https://vk.com/${profile.vk.replace("@", "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#0056D2] transition-colors"
+                  >
+                    <ExternalLink size={14} /> VK
+                  </a>
+                )}
+                {profile.telegram && (
+                  <a
+                    href={`https://t.me/${profile.telegram.replace("@", "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#0056D2] transition-colors"
+                  >
+                    <Send size={14} /> Telegram
+                  </a>
+                )}
+              </div>
+            </div>
+            {profile.bio && (
+              <p className="text-sm text-gray-600 mt-3 max-w-2xl leading-relaxed">
+                {profile.bio}
+              </p>
+            )}
+          </div>
+        </div>
+        {profile.enrollments?.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <h2 className="font-bold text-base mb-4 flex items-center gap-2">
+              <Award size={18} className="text-[#0056D2]" /> Пройденные курсы
+            </h2>
+            <div className="space-y-2">
+              {profile.enrollments.map((e: any, i: number) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
+                >
+                  <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+                  <span className="text-sm font-medium text-gray-800">
+                    {e.course.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+      <footer className="border-t border-gray-200 py-6 bg-white mt-auto">
+        <div className="max-w-[1440px] mx-auto px-4 text-center text-gray-600 text-sm">
+          © Manageko Inc., 2026 Все права защищены.
+        </div>
+      </footer>
+    </div>
+  );
+};
+
 export const ProfilePage = () => {
+  const { id } = useParams<{ id?: string }>();
+  const userData = localStorage.getItem("user");
+  const user = userData ? JSON.parse(userData) : null;
+  if (id && Number(id) !== user?.id)
+    return <PublicProfile userId={Number(id)} />;
+  return <OwnProfile />;
+};
+
+const OwnProfile = () => {
   const navigate = useNavigate();
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
@@ -87,7 +207,8 @@ export const ProfilePage = () => {
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
-
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [coverColor, setCoverColor] = useState(user?.coverColor || "#0056D2");
   const [activityDays, setActivityDays] = useState<boolean[]>(
     Array(7).fill(false),
   );
@@ -131,11 +252,11 @@ export const ProfilePage = () => {
             enrollments.length,
         )
       : 0;
+  const ratedCourses = completed.filter((e) => e.rating);
   const avgRating =
-    completed.filter((e) => e.rating).length > 0
+    ratedCourses.length > 0
       ? (
-          completed.filter((e) => e.rating).reduce((s, e) => s + e.rating, 0) /
-          completed.filter((e) => e.rating).length
+          ratedCourses.reduce((s, e) => s + e.rating, 0) / ratedCourses.length
         ).toFixed(1)
       : "—";
   const activeDays = activityDays.filter(Boolean).length;
@@ -146,12 +267,23 @@ export const ProfilePage = () => {
     user.email?.[0]?.toUpperCase() ||
     "U";
 
+  const handleColorChange = async (color: string) => {
+    setCoverColor(color);
+    setShowColorPicker(false);
+    try {
+      await api.put("/profile", { coverColor: color });
+      localStorage.setItem(
+        "user",
+        JSON.stringify({ ...user, coverColor: color }),
+      );
+    } catch {}
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       <ProfileModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} />
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-8">
-        {/* Хлебные крошки */}
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
           <Link to="/dashboard" className="hover:text-[#0056D2]">
             Главная
@@ -159,76 +291,141 @@ export const ProfilePage = () => {
           <ChevronRight size={12} />
           <span className="text-gray-600">Профиль</span>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* ЛЕВАЯ КОЛОНКА — профиль */}
           <aside className="lg:col-span-3">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center sticky top-24">
-              {/* Аватар */}
-              <div className="w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden border-4 border-gray-100 flex items-center justify-center bg-[#00205C] text-white text-2xl font-black">
-                {user.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt="avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  initials
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
+              <div
+                className="h-20 relative group"
+                style={{ backgroundColor: coverColor }}
+              >
+                <button
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  className="absolute top-2 right-2 p-1.5 bg-black/20 hover:bg-black/40 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <Palette size={13} className="text-white" />
+                </button>
+                {showColorPicker && (
+                  <div className="absolute top-10 right-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-10 grid grid-cols-5 gap-1.5">
+                    {COVER_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => handleColorChange(c)}
+                        className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 ${coverColor === c ? "border-gray-800" : "border-transparent"}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
-              <h1 className="text-xl font-black text-black mb-1">{fullName}</h1>
-              <p className="text-sm text-gray-500 mb-1">{user.email}</p>
-              <span
-                className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-5 ${user.role === "admin" ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-blue-50 text-[#0056D2] border border-blue-200"}`}
-              >
-                {user.role === "admin" ? "Администратор" : "Студент"}
-              </span>
-
-              {/* Быстрая статистика */}
-              <div className="space-y-3 text-left border-t border-gray-100 pt-5">
-                {[
-                  {
-                    icon: BookOpen,
-                    label: "Всего курсов",
-                    value: enrollments.length,
-                  },
-                  {
-                    icon: CheckCircle2,
-                    label: "Завершено",
-                    value: completed.length,
-                  },
-                  {
-                    icon: Clock,
-                    label: "В процессе",
-                    value: inProgress.length,
-                  },
-                  { icon: Star, label: "Средняя оценка", value: avgRating },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <item.icon size={14} className="text-[#0056D2]" />
-                      {item.label}
-                    </div>
-                    <span className="font-bold text-black">{item.value}</span>
+              <div className="px-6 pb-6">
+                <div className="-mt-8 mb-3">
+                  <div className="w-16 h-16 rounded-xl border-4 border-white overflow-hidden bg-[#00205C] text-white text-xl font-black flex items-center justify-center shadow">
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt="avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      initials
+                    )}
                   </div>
-                ))}
+                </div>
+                <h1 className="text-lg font-black text-black mb-0.5">
+                  {fullName}
+                </h1>
+                <p className="text-xs text-gray-500 mb-1">{user.email}</p>
+                <span
+                  className={`inline-block text-xs font-bold px-3 py-1 rounded-full border mb-3 ${roleBadgeClass(user.role)}`}
+                >
+                  {roleLabel(user.role)}
+                </span>
+                {user.bio && (
+                  <p className="text-xs text-gray-600 leading-relaxed mb-3 border-t border-gray-100 pt-3">
+                    {user.bio}
+                  </p>
+                )}
+                {(user.github || user.vk || user.telegram) && (
+                  <div className="flex flex-col gap-1.5 mb-3 border-t border-gray-100 pt-3">
+                    {user.github && (
+                      <a
+                        href={`https://github.com/${user.github.replace("@", "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-xs text-gray-600 hover:text-black transition-colors"
+                      >
+                        <Github size={13} /> {user.github}
+                      </a>
+                    )}
+                    {user.vk && (
+                      <a
+                        href={`https://vk.com/${user.vk.replace("@", "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-xs text-gray-600 hover:text-[#0056D2] transition-colors"
+                      >
+                        <ExternalLink size={12} /> VK: {user.vk}
+                      </a>
+                    )}
+                    {user.telegram && (
+                      <a
+                        href={`https://t.me/${user.telegram.replace("@", "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-xs text-gray-600 hover:text-[#0056D2] transition-colors"
+                      >
+                        <Send size={12} /> {user.telegram}
+                      </a>
+                    )}
+                  </div>
+                )}
+                <div className="space-y-2.5 text-left border-t border-gray-100 pt-3">
+                  {[
+                    {
+                      icon: BookOpen,
+                      label: "Всего курсов",
+                      value: enrollments.length,
+                    },
+                    {
+                      icon: CheckCircle2,
+                      label: "Завершено",
+                      value: completed.length,
+                    },
+                    {
+                      icon: Clock,
+                      label: "В процессе",
+                      value: inProgress.length,
+                    },
+                    {
+                      icon: Star,
+                      label: "Средняя оценка курсов",
+                      value: avgRating,
+                    },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <item.icon size={13} className="text-[#0056D2]" />
+                        <span className="text-xs">{item.label}</span>
+                      </div>
+                      <span className="font-bold text-black text-sm">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setIsEditOpen(true)}
+                  className="mt-4 w-full text-sm font-bold text-[#0056D2] border border-[#0056D2] py-2.5 rounded-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Edit2 size={14} /> Редактировать профиль
+                </button>
               </div>
-
-              <button
-                onClick={() => setIsEditOpen(true)}
-                className="mt-5 w-full text-sm font-bold text-[#0056D2] border border-[#0056D2] py-2.5 rounded-sm hover:bg-blue-50 transition-colors"
-              >
-                Редактировать профиль
-              </button>
             </div>
           </aside>
-
-          {/* ПРАВАЯ КОЛОНКА */}
           <div className="lg:col-span-9 space-y-6">
-            {/* Статистика */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {[
                 {
@@ -274,8 +471,6 @@ export const ProfilePage = () => {
                 </div>
               ))}
             </div>
-
-            {/* Активность за неделю */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <h2 className="font-bold text-base mb-4">Активность за неделю</h2>
               <div className="flex gap-2">
@@ -310,8 +505,6 @@ export const ProfilePage = () => {
                 <strong className="text-black">{activeDays}</strong>
               </p>
             </div>
-
-            {/* Сертификаты */}
             {completed.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h2 className="font-bold text-base mb-4 flex items-center gap-2">
@@ -367,8 +560,6 @@ export const ProfilePage = () => {
                 </div>
               </div>
             )}
-
-            {/* Текущие курсы */}
             {inProgress.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <h2 className="font-bold text-base mb-4 flex items-center gap-2">
@@ -422,8 +613,6 @@ export const ProfilePage = () => {
                 </div>
               </div>
             )}
-
-            {/* Пусто */}
             {!isLoading && enrollments.length === 0 && (
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
                 <BookOpen size={40} className="text-gray-200 mx-auto mb-4" />
@@ -441,7 +630,6 @@ export const ProfilePage = () => {
           </div>
         </div>
       </main>
-
       <footer className="border-t border-gray-200 py-8 bg-white mt-auto">
         <div className="max-w-[1440px] mx-auto px-4 text-center text-gray-600 text-sm">
           © Manageko Inc., 2026 Все права защищены.

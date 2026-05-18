@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MessageCircle,
   Send,
@@ -37,16 +38,23 @@ const timeAgo = (dateStr: string) => {
   return `${Math.floor(h / 24)} дн. назад`;
 };
 
-const UserAvatar = ({ user }: { user: CommentUser }) => {
+const UserAvatar = ({
+  user,
+  onClick,
+}: {
+  user: CommentUser;
+  onClick?: () => void;
+}) => {
   const initial = (user.name?.[0] || user.surname?.[0] || "?").toUpperCase();
+  const cls =
+    "w-8 h-8 rounded-full object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity";
   return user.avatar ? (
-    <img
-      src={user.avatar}
-      alt="avatar"
-      className="w-8 h-8 rounded-full object-cover shrink-0"
-    />
+    <img src={user.avatar} alt="avatar" className={cls} onClick={onClick} />
   ) : (
-    <div className="w-8 h-8 rounded-full bg-[#00205C] text-white flex items-center justify-center text-xs font-bold shrink-0">
+    <div
+      className="w-8 h-8 rounded-full bg-[#00205C] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+      onClick={onClick}
+    >
       {initial}
     </div>
   );
@@ -77,6 +85,8 @@ const CommentItem = ({
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
   const canModify = currentUser?.id === comment.user.id || isAdmin;
+  const navigate = useNavigate();
+  const goToProfile = () => navigate(`/profile/${comment.user.id}`);
 
   const handleSaveEdit = () => {
     if (!editText.trim()) return;
@@ -86,14 +96,22 @@ const CommentItem = ({
 
   return (
     <div className="flex gap-3 group">
-      <UserAvatar user={comment.user} />
+      <UserAvatar user={comment.user} onClick={goToProfile} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <span className="text-sm font-bold text-black">
+          <button
+            onClick={goToProfile}
+            className="text-sm font-bold text-black hover:text-[#0056D2] transition-colors"
+          >
             {userName(comment.user)}
-          </span>
+          </button>
           {comment.user.role === "admin" && (
             <span className="text-[10px] font-bold bg-[#0056D2] text-white px-1.5 py-0.5 rounded">
+              Администратор
+            </span>
+          )}
+          {comment.user.role === "teacher" && (
+            <span className="text-[10px] font-bold bg-green-600 text-white px-1.5 py-0.5 rounded">
               Преподаватель
             </span>
           )}
@@ -186,7 +204,8 @@ interface LessonCommentsProps {
 export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
   const userData = localStorage.getItem("user");
   const currentUser = userData ? JSON.parse(userData) : null;
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin =
+    currentUser?.role === "admin" || currentUser?.role === "teacher";
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState("");

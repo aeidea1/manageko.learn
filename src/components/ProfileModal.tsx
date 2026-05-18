@@ -21,6 +21,10 @@ export const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
   const [name, setName] = useState(user?.name || "");
   const [surname, setSurname] = useState(user?.surname || "");
   const [password, setPassword] = useState("");
+  const [bio, setBio] = useState(user?.bio || "");
+  const [github, setGithub] = useState(user?.github || "");
+  const [vk, setVk] = useState(user?.vk || "");
+  const [telegram, setTelegram] = useState(user?.telegram || "");
   const [avatarBase64, setAvatarBase64] = useState<string | null>(
     user?.avatar || null,
   );
@@ -56,11 +60,24 @@ export const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
         name,
         surname,
         password: password.trim() || undefined,
-        avatar: avatarBase64, // null = удалить, строка = сохранить
+        avatar: avatarBase64,
+        bio: bio.trim() || null,
+        github: github.trim() || null,
+        vk: vk.trim() || null,
+        telegram: telegram.trim() || null,
       });
 
       const updatedUser = response.data;
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...updatedUser,
+          bio: bio.trim() || null,
+          github: github.trim() || null,
+          vk: vk.trim() || null,
+          telegram: telegram.trim() || null,
+        }),
+      );
       toast.success("Профиль обновлён!");
       onClose();
       // Обновляем страницу чтобы хедер подхватил новые данные
@@ -168,6 +185,64 @@ export const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Оставьте пустым, если не хотите менять"
             />
+          </div>
+        </div>
+
+        {/* О себе и соцсети */}
+        <div className="mt-6 space-y-4 border-t border-gray-100 pt-5">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">
+              О себе
+            </label>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Расскажите немного о себе..."
+              rows={3}
+              maxLength={300}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#0056D2] resize-none transition-colors"
+            />
+            <p className="text-xs text-gray-400 mt-1 text-right">
+              {bio.length}/300
+            </p>
+          </div>
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+              Соцсети и контакты
+            </p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
+                GH
+              </span>
+              <input
+                value={github}
+                onChange={(e) => setGithub(e.target.value)}
+                placeholder="GitHub username (без @)"
+                className="w-full border border-gray-200 rounded-lg pl-10 pr-3 py-2.5 text-sm outline-none focus:border-[#0056D2] transition-colors"
+              />
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
+                VK
+              </span>
+              <input
+                value={vk}
+                onChange={(e) => setVk(e.target.value)}
+                placeholder="VK username (без @)"
+                className="w-full border border-gray-200 rounded-lg pl-10 pr-3 py-2.5 text-sm outline-none focus:border-[#0056D2] transition-colors"
+              />
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
+                TG
+              </span>
+              <input
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                placeholder="Telegram username (без @)"
+                className="w-full border border-gray-200 rounded-lg pl-10 pr-3 py-2.5 text-sm outline-none focus:border-[#0056D2] transition-colors"
+              />
+            </div>
           </div>
         </div>
 
