@@ -294,10 +294,13 @@ const OwnProfile = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-3">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
-              <div
-                className="h-20 relative group"
-                style={{ backgroundColor: coverColor }}
-              >
+              {/* Блок с фоном и кнопкой */}
+              <div className="relative">
+                <div
+                  className="h-20 w-full"
+                  style={{ backgroundColor: coverColor }}
+                />
+                {/* Кнопка выбора цвета - теперь всегда видна */}
                 <button
                   onClick={() => setShowColorPicker(!showColorPicker)}
                   className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg transition-all z-50"
@@ -310,13 +313,18 @@ const OwnProfile = () => {
                       <button
                         key={c}
                         onClick={() => handleColorChange(c)}
-                        className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 ${coverColor === c ? "border-gray-800" : "border-transparent"}`}
+                        className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 ${
+                          coverColor === c
+                            ? "border-gray-800"
+                            : "border-transparent"
+                        }`}
                         style={{ backgroundColor: c }}
                       />
                     ))}
                   </div>
                 )}
               </div>
+
               <div className="px-6 pb-6">
                 <div className="-mt-8 mb-3">
                   <div className="w-16 h-16 rounded-xl border-4 border-white overflow-hidden bg-[#00205C] text-white text-xl font-black flex items-center justify-center shadow">
