@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
+// Иконки для категорий
 const CATEGORY_ICONS: Record<string, string> = {
   "Компьютерные науки": "💻",
   "Дизайн и Искусство": "🎨",
@@ -25,6 +26,17 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Цифровой маркетинг": "📣",
 };
 
+// Популярные теги (как в DashboardPage)
+const SKILL_TAGS = [
+  "Python",
+  "Kotlin",
+  "React",
+  "Vue",
+  "Lua",
+  "Figma",
+  "UI/UX",
+];
+
 export const MyLearningPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"progress" | "completed">(
@@ -39,6 +51,7 @@ export const MyLearningPage = () => {
   const [popularCategories, setPopularCategories] = useState<
     { category: string; count: number }[]
   >([]);
+  const [activeSkill, setActiveSkill] = useState<string | null>(null);
 
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
@@ -136,7 +149,7 @@ export const MyLearningPage = () => {
               </p>
             </div>
 
-            {/* Популярные категории — реальные данные */}
+            {/* Популярные категории */}
             <div>
               <h2 className="font-bold text-xl mb-4 text-black">
                 Популярные категории
@@ -174,6 +187,37 @@ export const MyLearningPage = () => {
                       ))}
               </div>
             </div>
+
+            {/* Популярные теги (НОВЫЙ БЛОК - как в DashboardPage) */}
+            <div>
+              <h2 className="font-bold text-xl mb-4 text-black">
+                Популярные теги
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {SKILL_TAGS.map((tag) => (
+                  <span
+                    key={tag}
+                    onClick={() => {
+                      setActiveSkill(activeSkill === tag ? null : tag);
+                      if (activeSkill !== tag) {
+                        navigate(
+                          `/dashboard?search=${encodeURIComponent(tag)}`,
+                        );
+                      } else {
+                        navigate("/dashboard");
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-full text-xs font-bold shadow-sm cursor-pointer transition-colors ${
+                      activeSkill === tag
+                        ? "bg-[#0056D2] text-white"
+                        : "bg-[#555d6b] text-white hover:bg-gray-700"
+                    }`}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </aside>
 
           {/* ── ОСНОВНОЙ КОНТЕНТ ── */}
@@ -189,7 +233,11 @@ export const MyLearningPage = () => {
                 <button
                   key={t}
                   onClick={() => setActiveTab(t)}
-                  className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === t ? "bg-[#0056D2] text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+                    activeTab === t
+                      ? "bg-[#0056D2] text-white"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  }`}
                 >
                   {t === "progress" ? "В процессе" : "Пройденные"}
                   {t === "progress" && inProgress.length > 0 && (
