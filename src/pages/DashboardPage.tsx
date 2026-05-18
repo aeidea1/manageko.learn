@@ -9,24 +9,24 @@ const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
 const COURSES_PER_PAGE = 12;
 
-// Иконки для категорий
-const CATEGORY_ICONS: Record<string, string> = {
-  "Компьютерные науки": "💻",
-  "Дизайн и Искусство": "🎨",
-  "Бизнес и Маркетинг": "📈",
-  "Данные и ИИ": "🤖",
-  "Разработка на Python": "🐍",
-  "Веб-разработка (Fullstack)": "🌐",
-  "Мобильная разработка": "📱",
-  Кибербезопасность: "🔒",
-  "Облачные вычисления": "☁️",
-  "Дизайнер UI/UX": "✏️",
-  "Графический дизайн": "🖼️",
-  "Машинное обучение": "🧠",
-  "Data Science": "📊",
-  "Аналитик данных": "📉",
-  "Цифровой маркетинг": "📣",
-};
+// УДАЛИТЕ ЭТОТ БЛОК - он не используется
+// const CATEGORY_ICONS: Record<string, string> = {
+//   "Компьютерные науки": "💻",
+//   "Дизайн и Искусство": "🎨",
+//   "Бизнес и Маркетинг": "📈",
+//   "Данные и ИИ": "🤖",
+//   "Разработка на Python": "🐍",
+//   "Веб-разработка (Fullstack)": "🌐",
+//   "Мобильная разработка": "📱",
+//   Кибербезопасность: "🔒",
+//   "Облачные вычисления": "☁️",
+//   "Дизайнер UI/UX": "✏️",
+//   "Графический дизайн": "🖼️",
+//   "Машинное обучение": "🧠",
+//   "Data Science": "📊",
+//   "Аналитик данных": "📉",
+//   "Цифровой маркетинг": "📣",
+// };
 
 const SKILL_TAGS = [
   "Python",
@@ -57,10 +57,10 @@ export const DashboardPage = () => {
   );
   const [activityLoading, setActivityLoading] = useState(true);
 
-  // Популярные категории — с сервера
-  const [popularCategories, setPopularCategories] = useState<
-    { category: string; count: number; students: number }[]
-  >([]);
+  // УДАЛИТЕ popularCategories - он не используется в JSX
+  // const [popularCategories, setPopularCategories] = useState<
+  //   { category: string; count: number; students: number }[]
+  // >([]);
 
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
@@ -97,24 +97,24 @@ export const DashboardPage = () => {
     syncActivity();
   }, []);
 
-  // ── Популярные категории с сервера ────────────────────────────────────────
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await api.get("/popular-categories");
-        setPopularCategories(res.data);
-      } catch {
-        // fallback: статичный список
-        setPopularCategories([
-          { category: "Компьютерные науки", count: 0, students: 0 },
-          { category: "Дизайн и Искусство", count: 0, students: 0 },
-          { category: "Данные и ИИ", count: 0, students: 0 },
-          { category: "Бизнес и Маркетинг", count: 0, students: 0 },
-        ]);
-      }
-    };
-    fetchCategories();
-  }, []);
+  // ── УДАЛИТЕ ЭТОТ useEffect с популярными категориями ──
+  // useEffect(() => {
+  //   const fetchCategories = async () => {
+  //     try {
+  //       const res = await api.get("/popular-categories");
+  //       setPopularCategories(res.data);
+  //     } catch {
+  //       // fallback: статичный список
+  //       setPopularCategories([
+  //         { category: "Компьютерные науки", count: 0, students: 0 },
+  //         { category: "Дизайн и Искусство", count: 0, students: 0 },
+  //         { category: "Данные и ИИ", count: 0, students: 0 },
+  //         { category: "Бизнес и Маркетинг", count: 0, students: 0 },
+  //       ]);
+  //     }
+  //   };
+  //   fetchCategories();
+  // }, []);
 
   // ── Курсы с пагинацией ────────────────────────────────────────────────────
   const fetchCourses = useCallback(
