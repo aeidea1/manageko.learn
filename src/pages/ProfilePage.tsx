@@ -300,12 +300,12 @@ const OwnProfile = () => {
               >
                 <button
                   onClick={() => setShowColorPicker(!showColorPicker)}
-                  className="absolute top-2 right-2 p-1.5 bg-black/20 hover:bg-black/40 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute top-2 right-2 p-1.5 bg-black/20 hover:bg-black/40 rounded-lg transition-colors opacity-0 group-hover:opacity-100 z-10"
                 >
                   <Palette size={13} className="text-white" />
                 </button>
                 {showColorPicker && (
-                  <div className="absolute top-10 right-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-10 grid grid-cols-5 gap-1.5">
+                  <div className="absolute top-10 right-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-20 grid grid-cols-5 gap-1.5">
                     {COVER_COLORS.map((c) => (
                       <button
                         key={c}

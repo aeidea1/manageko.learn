@@ -7,25 +7,6 @@ import toast from "react-hot-toast";
 
 const DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
-// Иконки для категорий
-const CATEGORY_ICONS: Record<string, string> = {
-  "Компьютерные науки": "💻",
-  "Дизайн и Искусство": "🎨",
-  "Бизнес и Маркетинг": "📈",
-  "Данные и ИИ": "🤖",
-  "Разработка на Python": "🐍",
-  "Веб-разработка (Fullstack)": "🌐",
-  "Мобильная разработка": "📱",
-  Кибербезопасность: "🔒",
-  "Облачные вычисления": "☁️",
-  "Дизайнер UI/UX": "✏️",
-  "Графический дизайн": "🖼️",
-  "Машинное обучение": "🧠",
-  "Data Science": "📊",
-  "Аналитик данных": "📉",
-  "Цифровой маркетинг": "📣",
-};
-
 // Популярные теги (как в DashboardPage)
 const SKILL_TAGS = [
   "Python",
@@ -48,9 +29,6 @@ export const MyLearningPage = () => {
     Array(7).fill(false),
   );
   const [activityLoading, setActivityLoading] = useState(true);
-  const [popularCategories, setPopularCategories] = useState<
-    { category: string; count: number }[]
-  >([]);
   const [activeSkill, setActiveSkill] = useState<string | null>(null);
 
   const userData = localStorage.getItem("user");
@@ -73,14 +51,6 @@ export const MyLearningPage = () => {
       }
     };
     syncActivity();
-  }, []);
-
-  // Популярные категории с сервера
-  useEffect(() => {
-    api
-      .get("/popular-categories")
-      .then((res) => setPopularCategories(res.data))
-      .catch(() => {});
   }, []);
 
   // Курсы пользователя
@@ -149,46 +119,7 @@ export const MyLearningPage = () => {
               </p>
             </div>
 
-            {/* Популярные категории */}
-            <div>
-              <h2 className="font-bold text-xl mb-4 text-black">
-                Популярные категории
-              </h2>
-              <div className="flex flex-col gap-2">
-                {popularCategories.length > 0
-                  ? popularCategories.map((item) => (
-                      <button
-                        key={item.category}
-                        onClick={() =>
-                          navigate(
-                            `/dashboard?category=${encodeURIComponent(item.category)}`,
-                          )
-                        }
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm font-medium bg-gray-50 text-gray-700 border border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:text-[#0056D2] transition-all"
-                      >
-                        <span className="text-base shrink-0">
-                          {CATEGORY_ICONS[item.category] || "📚"}
-                        </span>
-                        <span className="flex-1 truncate">{item.category}</span>
-                        {item.count > 0 && (
-                          <span className="text-xs text-gray-400 shrink-0">
-                            {item.count}
-                          </span>
-                        )}
-                      </button>
-                    ))
-                  : Array(4)
-                      .fill(0)
-                      .map((_, i) => (
-                        <div
-                          key={i}
-                          className="h-10 bg-gray-100 rounded-lg animate-pulse"
-                        />
-                      ))}
-              </div>
-            </div>
-
-            {/* Популярные теги (НОВЫЙ БЛОК - как в DashboardPage) */}
+            {/* Популярные теги (как в DashboardPage) */}
             <div>
               <h2 className="font-bold text-xl mb-4 text-black">
                 Популярные теги
