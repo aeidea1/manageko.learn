@@ -294,13 +294,13 @@ const OwnProfile = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-3">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
-              {/* Блок с фоном и кнопкой */}
-              <div className="relative">
+              {/* Баннер + аватар — правильная структура без перекрытия */}
+              <div className="relative pb-0">
                 <div
                   className="h-20 w-full"
                   style={{ backgroundColor: coverColor }}
                 />
-                {/* Кнопка выбора цвета - теперь всегда видна */}
+                {/* Кнопка выбора цвета */}
                 <button
                   onClick={() => setShowColorPicker(!showColorPicker)}
                   className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg transition-all z-50"
@@ -323,10 +323,8 @@ const OwnProfile = () => {
                     ))}
                   </div>
                 )}
-              </div>
-
-              <div className="px-6 pb-6">
-                <div className="-mt-8 mb-3">
+                {/* Аватар выступает из баннера вниз — z-10 чтобы быть поверх */}
+                <div className="absolute -bottom-8 left-6 z-10">
                   <div className="w-16 h-16 rounded-xl border-4 border-white overflow-hidden bg-[#00205C] text-white text-xl font-black flex items-center justify-center shadow">
                     {user.avatar ? (
                       <img
@@ -339,6 +337,11 @@ const OwnProfile = () => {
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* Отступ сверху = высота половины аватара чтобы не перекрывать */}
+              <div className="px-6 pb-6 pt-10">
+                <div className="mb-3" />
                 <h1 className="text-lg font-black text-black mb-0.5">
                   {fullName}
                 </h1>

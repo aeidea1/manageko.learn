@@ -25,7 +25,6 @@ const ProtectedRoute = ({
   roles,
 }: {
   children: React.ReactNode;
-  // roles: список допустимых ролей. Если не передан — любой авторизованный.
   roles?: string[];
 }) => {
   const token = localStorage.getItem("token");
@@ -52,6 +51,7 @@ function App() {
       />
       <BrowserRouter>
         <Routes>
+          {/* Гостевые */}
           <Route
             path="/login"
             element={
@@ -76,6 +76,14 @@ function App() {
               </GuestRoute>
             }
           />
+          <Route
+            path="/"
+            element={
+              <GuestRoute>
+                <LandingPage />
+              </GuestRoute>
+            }
+          />
 
           {/* Любой авторизованный */}
           <Route
@@ -91,22 +99,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyLearningPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile/:id"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
               </ProtectedRoute>
             }
           />
@@ -127,6 +119,25 @@ function App() {
             }
           />
 
+          {/* Свой профиль */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Публичный профиль другого пользователя — ЭТОГО роута не было, поэтому не открывался */}
+          <Route
+            path="/profile/:id"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Только admin */}
           <Route
             path="/admin"
@@ -137,7 +148,7 @@ function App() {
             }
           />
 
-          {/* Преподаватель ИЛИ admin */}
+          {/* Преподаватель или admin */}
           <Route
             path="/manager"
             element={
@@ -155,14 +166,6 @@ function App() {
             }
           />
 
-          <Route
-            path="/"
-            element={
-              <GuestRoute>
-                <LandingPage />
-              </GuestRoute>
-            }
-          />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>

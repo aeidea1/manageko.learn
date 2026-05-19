@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   MessageCircle,
   Send,
@@ -9,6 +8,7 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
@@ -38,25 +38,41 @@ const timeAgo = (dateStr: string) => {
   return `${Math.floor(h / 24)} дн. назад`;
 };
 
-const UserAvatar = ({
-  user,
-  onClick,
-}: {
-  user: CommentUser;
-  onClick?: () => void;
-}) => {
+const RoleBadge = ({ role }: { role: string }) => {
+  if (role === "admin")
+    return (
+      <span className="text-[10px] font-bold bg-purple-600 text-white px-1.5 py-0.5 rounded">
+        Администратор
+      </span>
+    );
+  if (role === "teacher")
+    return (
+      <span className="text-[10px] font-bold bg-[#0056D2] text-white px-1.5 py-0.5 rounded">
+        Наставник
+      </span>
+    );
+  return null;
+};
+
+const UserAvatar = ({ user }: { user: CommentUser }) => {
   const initial = (user.name?.[0] || user.surname?.[0] || "?").toUpperCase();
-  const cls =
-    "w-8 h-8 rounded-full object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity";
-  return user.avatar ? (
-    <img src={user.avatar} alt="avatar" className={cls} onClick={onClick} />
-  ) : (
-    <div
-      className="w-8 h-8 rounded-full bg-[#00205C] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-      onClick={onClick}
+  return (
+    <Link
+      to={`/profile/${user.id}`}
+      className="shrink-0 hover:opacity-80 transition-opacity"
     >
-      {initial}
-    </div>
+      {user.avatar ? (
+        <img
+          src={user.avatar}
+          alt="avatar"
+          className="w-8 h-8 rounded-full object-cover"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-[#00205C] text-white flex items-center justify-center text-xs font-bold">
+          {initial}
+        </div>
+      )}
+    </Link>
   );
 };
 
@@ -85,8 +101,6 @@ const CommentItem = ({
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
   const canModify = currentUser?.id === comment.user.id || isAdmin;
-  const navigate = useNavigate();
-  const goToProfile = () => navigate(`/profile/${comment.user.id}`);
 
   const handleSaveEdit = () => {
     if (!editText.trim()) return;
@@ -96,25 +110,16 @@ const CommentItem = ({
 
   return (
     <div className="flex gap-3 group">
-      <UserAvatar user={comment.user} onClick={goToProfile} />
+      <UserAvatar user={comment.user} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <button
-            onClick={goToProfile}
+          <Link
+            to={`/profile/${comment.user.id}`}
             className="text-sm font-bold text-black hover:text-[#0056D2] transition-colors"
           >
             {userName(comment.user)}
-          </button>
-          {comment.user.role === "admin" && (
-            <span className="text-[10px] font-bold bg-[#0056D2] text-white px-1.5 py-0.5 rounded">
-              Администратор
-            </span>
-          )}
-          {comment.user.role === "teacher" && (
-            <span className="text-[10px] font-bold bg-green-600 text-white px-1.5 py-0.5 rounded">
-              Преподаватель
-            </span>
-          )}
+          </Link>
+          <RoleBadge role={comment.user.role} />
           <span className="text-xs text-gray-400">
             {timeAgo(comment.createdAt)}
           </span>
@@ -136,7 +141,6 @@ const CommentItem = ({
               }}
               rows={2}
               className="flex-1 border border-[#0056D2] rounded-lg px-3 py-2 text-sm outline-none resize-none"
-              autoFocus
             />
             <div className="flex flex-col gap-1">
               <button
@@ -150,65 +154,78 @@ const CommentItem = ({
                   setEditing(false);
                   setEditText(comment.text);
                 }}
-                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50"
+                className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"
               >
                 <X size={14} />
               </button>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-700 leading-relaxed break-words whitespace-pre-wrap mb-1">
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words mb-1">
             {comment.text}
           </p>
         )}
 
         <div className="flex items-center gap-3">
-          {/* Ответить можно только на комментарии первого уровня */}
-          <button
-            onClick={() =>
-              onReply(comment.id, userName(comment.user), parentId)
-            }
-            className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors font-medium"
-          >
-            Ответить
-          </button>
+          {!editing && (
+            <button
+              onClick={() =>
+                onReply(
+                  parentId || comment.id,
+                  userName(comment.user),
+                  parentId,
+                )
+              }
+              className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors flex items-center gap-1"
+            >
+              <CornerDownRight size={12} />
+              Ответить
+            </button>
+          )}
           {canModify && !editing && (
             <>
-              {currentUser?.id === comment.user.id && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
-                >
-                  <Pencil size={11} /> Изменить
-                </button>
-              )}
+              <button
+                onClick={() => setEditing(true)}
+                className="text-xs text-gray-400 hover:text-[#0056D2] transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
+              >
+                <Pencil size={11} />
+                Изменить
+              </button>
               <button
                 onClick={() => onDelete(comment.id, parentId)}
                 className="text-xs text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
               >
-                <Trash2 size={11} /> Удалить
+                <Trash2 size={11} />
+                Удалить
               </button>
             </>
           )}
         </div>
+
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="mt-3 space-y-3 border-l-2 border-gray-100 pl-3">
+            {comment.replies.map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                currentUser={currentUser}
+                isAdmin={isAdmin}
+                onReply={onReply}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                parentId={comment.id}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-interface LessonCommentsProps {
-  lessonId: number;
-  courseTitle?: string;
-}
-
-export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
-  const userData = localStorage.getItem("user");
-  const currentUser = userData ? JSON.parse(userData) : null;
-  const isAdmin =
-    currentUser?.role === "admin" || currentUser?.role === "teacher";
-
+export const LessonComments = ({ lessonId }: { lessonId: number }) => {
   const [comments, setComments] = useState<Comment[]>([]);
-  const [text, setText] = useState("");
+  const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<{
     id: number;
     name: string;
@@ -217,60 +234,49 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
-  const load = async () => {
+  const userData = localStorage.getItem("user");
+  const currentUser = userData ? JSON.parse(userData) : null;
+  const isAdmin = currentUser?.role === "admin";
+
+  useEffect(() => {
+    fetchComments();
+  }, [lessonId]);
+
+  const fetchComments = async () => {
     try {
       const res = await api.get(`/lessons/${lessonId}/comments`);
       setComments(res.data);
     } catch {
+      toast.error("Не удалось загрузить комментарии");
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!lessonId) {
-      setIsLoading(false);
-      return;
-    }
-    load();
-  }, [lessonId]);
-
-  if (!lessonId)
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h2 className="font-bold text-base mb-3 flex items-center gap-2">
-          <MessageCircle size={18} className="text-[#0056D2]" /> Вопросы и
-          обсуждение
-        </h2>
-        <p className="text-sm text-gray-400 italic">
-          Комментарии будут доступны после добавления уроков в курс.
-        </p>
-      </div>
-    );
-
   const handleSend = async () => {
-    if (!text.trim() || !currentUser) return;
+    if (!newComment.trim()) return;
     setIsSending(true);
     try {
-      const rootId = replyTo?.rootId ?? replyTo?.id ?? null;
       const res = await api.post(`/lessons/${lessonId}/comments`, {
-        userId: currentUser.id,
-        text,
-        parentId: rootId,
+        userId: currentUser?.id,
+        text: newComment.trim(),
+        parentId: replyTo?.rootId || replyTo?.id || undefined,
       });
-      if (replyTo) {
+      if (replyTo?.rootId || replyTo?.id) {
         setComments((prev) =>
           prev.map((c) =>
-            c.id === rootId ? { ...c, replies: [...c.replies, res.data] } : c,
+            c.id === (replyTo.rootId || replyTo.id)
+              ? { ...c, replies: [...(c.replies || []), res.data] }
+              : c,
           ),
         );
       } else {
-        setComments((prev) => [res.data, ...prev]);
+        setComments((prev) => [...prev, { ...res.data, replies: [] }]);
       }
-      setText("");
+      setNewComment("");
       setReplyTo(null);
     } catch {
-      toast.error("Ошибка при отправке");
+      toast.error("Не удалось отправить комментарий");
     } finally {
       setIsSending(false);
     }
@@ -291,17 +297,20 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
         setComments((prev) => prev.filter((c) => c.id !== commentId));
       }
     } catch {
-      toast.error("Ошибка");
+      toast.error("Не удалось удалить комментарий");
     }
   };
 
   const handleEdit = async (
     commentId: number,
-    newText: string,
+    text: string,
     parentId?: number,
   ) => {
     try {
-      const res = await api.put(`/comments/${commentId}`, { text: newText });
+      const res = await api.put(`/comments/${commentId}`, {
+        userId: currentUser?.id,
+        text,
+      });
       if (parentId) {
         setComments((prev) =>
           prev.map((c) =>
@@ -309,9 +318,7 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
               ? {
                   ...c,
                   replies: c.replies.map((r) =>
-                    r.id === commentId
-                      ? { ...r, text: res.data.text, edited: true }
-                      : r,
+                    r.id === commentId ? { ...r, ...res.data } : r,
                   ),
                 }
               : c,
@@ -319,138 +326,117 @@ export const LessonComments = ({ lessonId }: LessonCommentsProps) => {
         );
       } else {
         setComments((prev) =>
-          prev.map((c) =>
-            c.id === commentId
-              ? { ...c, text: res.data.text, edited: true }
-              : c,
-          ),
+          prev.map((c) => (c.id === commentId ? { ...c, ...res.data } : c)),
         );
       }
-      toast.success("Комментарий изменён");
     } catch {
-      toast.error("Ошибка");
+      toast.error("Не удалось изменить комментарий");
     }
   };
 
-  const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
-
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-      <h2 className="font-bold text-base mb-5 flex items-center gap-2">
+    <div className="mt-8">
+      <h3 className="font-bold text-base mb-5 flex items-center gap-2">
         <MessageCircle size={18} className="text-[#0056D2]" />
-        Вопросы и обсуждение
-        {totalCount > 0 && (
+        Комментарии
+        {comments.length > 0 && (
           <span className="text-xs text-gray-400 font-normal">
-            ({totalCount})
+            ({comments.length})
           </span>
         )}
-      </h2>
+      </h3>
 
-      {/* Форма */}
-      {currentUser ? (
-        <div className="mb-6">
-          {replyTo && (
-            <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 bg-blue-50 px-3 py-1.5 rounded-lg w-fit">
-              <CornerDownRight size={12} />
+      <div className="mb-6">
+        {replyTo && (
+          <div className="flex items-center gap-2 mb-2 text-xs text-gray-500 bg-blue-50 px-3 py-2 rounded-lg">
+            <CornerDownRight size={12} className="text-[#0056D2]" />
+            <span>
               Ответ для <strong>{replyTo.name}</strong>
-              <button
-                onClick={() => setReplyTo(null)}
-                className="text-gray-400 hover:text-red-500 ml-1"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-          <div className="flex gap-3">
-            <UserAvatar user={currentUser} />
-            <div className="flex-1 flex gap-2">
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder={
-                  replyTo
-                    ? `Ответить ${replyTo.name}...`
-                    : "Задайте вопрос или поделитесь мыслями..."
-                }
-                rows={2}
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#0056D2] resize-none transition-colors min-w-0"
-              />
-              <button
-                onClick={handleSend}
-                disabled={isSending || !text.trim()}
-                className="self-end bg-[#0056D2] text-white p-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors shrink-0"
-              >
-                <Send size={16} />
-              </button>
-            </div>
+            </span>
+            <button
+              onClick={() => setReplyTo(null)}
+              className="ml-auto text-gray-400 hover:text-red-500"
+            >
+              <X size={14} />
+            </button>
           </div>
-          <p className="text-xs text-gray-400 mt-1.5 ml-11">
-            Enter — отправить, Shift+Enter — новая строка
-          </p>
+        )}
+        <div className="flex gap-3 items-end">
+          {currentUser && (
+            <Link
+              to={`/profile/${currentUser.id}`}
+              className="shrink-0 hover:opacity-80 transition-opacity"
+            >
+              {currentUser.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt="avatar"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#00205C] text-white flex items-center justify-center text-xs font-bold">
+                  {(
+                    currentUser.name?.[0] ||
+                    currentUser.email?.[0] ||
+                    "?"
+                  ).toUpperCase()}
+                </div>
+              )}
+            </Link>
+          )}
+          <div className="flex-1 relative">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Напишите комментарий..."
+              rows={2}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm outline-none focus:border-[#0056D2] resize-none transition-colors"
+            />
+            <button
+              onClick={handleSend}
+              disabled={isSending || !newComment.trim()}
+              className="absolute right-3 bottom-3 text-[#0056D2] hover:text-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send size={18} />
+            </button>
+          </div>
         </div>
-      ) : (
-        <p className="text-sm text-gray-400 mb-6 italic">
-          Войдите чтобы оставить комментарий.
-        </p>
-      )}
+      </div>
 
-      {/* Список */}
       {isLoading ? (
         <div className="space-y-4">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="flex gap-3 animate-pulse">
-              <div className="w-8 h-8 bg-gray-100 rounded-full shrink-0" />
+          {[1, 2].map((i) => (
+            <div key={i} className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 bg-gray-100 rounded w-28" />
-                <div className="h-4 bg-gray-100 rounded w-full" />
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-32" />
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
               </div>
             </div>
           ))}
         </div>
       ) : comments.length === 0 ? (
-        <div className="text-center py-8">
-          <MessageCircle size={32} className="text-gray-200 mx-auto mb-2" />
-          <p className="text-sm text-gray-400">
-            Пока нет вопросов. Будьте первым!
-          </p>
+        <div className="text-center py-8 text-gray-400 text-sm">
+          Пока нет комментариев. Будьте первым!
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {comments.map((comment) => (
-            <div key={comment.id}>
-              <CommentItem
-                comment={comment}
-                currentUser={currentUser}
-                isAdmin={isAdmin}
-                onReply={(id, name, rootId) => setReplyTo({ id, name, rootId })}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-              />
-              {comment.replies.length > 0 && (
-                <div className="ml-11 mt-3 space-y-4 border-l-2 border-gray-100 pl-4">
-                  {comment.replies.map((reply) => (
-                    <CommentItem
-                      key={reply.id}
-                      comment={reply}
-                      currentUser={currentUser}
-                      isAdmin={isAdmin}
-                      onReply={(id, name, rootId) =>
-                        setReplyTo({ id, name, rootId })
-                      }
-                      onDelete={handleDelete}
-                      onEdit={handleEdit}
-                      parentId={comment.id}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              currentUser={currentUser}
+              isAdmin={isAdmin}
+              onReply={(id, name, rootId) => setReplyTo({ id, name, rootId })}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+            />
           ))}
         </div>
       )}
