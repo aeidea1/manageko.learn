@@ -60,6 +60,7 @@ export const Header = () => {
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
   const isAdmin = user?.role === "admin";
+  const isTeacher = user?.role === "teacher";
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -184,6 +185,17 @@ export const Header = () => {
             {isAdmin && (
               <NavLink
                 to="/admin"
+                title="Панель администратора"
+                className={({ isActive }) =>
+                  `flex items-center justify-center w-9 h-9 transition-colors ${isActive ? "text-[#0056D2]" : "text-gray-600 hover:text-[#0056D2]"}`
+                }
+              >
+                <LayoutDashboard size={20} />
+              </NavLink>
+            )}
+            {isTeacher && (
+              <NavLink
+                to="/manager"
                 title="Менеджер курсов"
                 className={({ isActive }) =>
                   `flex items-center justify-center w-9 h-9 transition-colors ${isActive ? "text-[#0056D2]" : "text-gray-600 hover:text-[#0056D2]"}`

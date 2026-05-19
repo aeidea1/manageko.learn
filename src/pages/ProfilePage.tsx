@@ -194,7 +194,7 @@ export const ProfilePage = () => {
   const { id } = useParams<{ id?: string }>();
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
-  if (id && Number(id) !== user?.id)
+  if (id && Number(id) !== Number(user?.id))
     return <PublicProfile userId={Number(id)} />;
   return <OwnProfile />;
 };
