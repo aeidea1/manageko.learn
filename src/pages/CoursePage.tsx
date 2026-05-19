@@ -403,10 +403,9 @@ export const CoursePage = () => {
               (lessons.length > 0 ? (
                 <LessonComments
                   lessonId={lessons[0]?.id}
-                  courseTitle={courseData.title}
                 />
               ) : (
-                <LessonComments lessonId={0} courseTitle={courseData.title} />
+                <LessonComments lessonId={0} />
               ))}
           </div>
 
