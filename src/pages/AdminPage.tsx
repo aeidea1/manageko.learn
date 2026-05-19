@@ -670,16 +670,17 @@ export const AdminPage = () => {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleToggleActive(u)}
-                                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-colors ${u.isActive === false ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-500"}`}
+                                  title={
+                                    u.isActive === false
+                                      ? "Активировать"
+                                      : "Деактивировать"
+                                  }
+                                  className={`p-2 rounded-lg transition-colors ${u.isActive === false ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-orange-50 text-orange-500 hover:bg-orange-100"}`}
                                 >
                                   {u.isActive === false ? (
-                                    <>
-                                      <CheckCircle size={13} /> Активировать
-                                    </>
+                                    <CheckCircle size={15} />
                                   ) : (
-                                    <>
-                                      <Ban size={13} /> Деактивировать
-                                    </>
+                                    <Ban size={15} />
                                   )}
                                 </button>
                                 <button

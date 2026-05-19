@@ -94,7 +94,7 @@ const PublicProfile = ({ userId }: { userId: number }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-8">
-        <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm mb-6 bg-white">
+        <div className="rounded-2xl border border-gray-200 shadow-sm mb-6 bg-white overflow-visible">
           <div
             className="h-32 relative"
             style={{ backgroundColor: coverColor }}
@@ -293,38 +293,32 @@ const OwnProfile = () => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-3">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
-              {/* Баннер + аватар — правильная структура без перекрытия */}
-              <div className="relative pb-0">
-                <div
-                  className="h-20 w-full"
-                  style={{ backgroundColor: coverColor }}
-                />
-                {/* Кнопка выбора цвета */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible sticky top-24">
+              {/* Блок с фоном и аватаром */}
+              <div
+                className="relative h-20"
+                style={{ backgroundColor: coverColor }}
+              >
                 <button
                   onClick={() => setShowColorPicker(!showColorPicker)}
-                  className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg transition-all z-50"
+                  className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg transition-all z-10"
                 >
                   <Palette size={14} className="text-white" />
                 </button>
                 {showColorPicker && (
                   <div className="absolute top-10 right-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-50 grid grid-cols-5 gap-1.5">
-                    {COVER_COLORS.map((c) => (
+                    {COVER_COLORS.map((col) => (
                       <button
-                        key={c}
-                        onClick={() => handleColorChange(c)}
-                        className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 ${
-                          coverColor === c
-                            ? "border-gray-800"
-                            : "border-transparent"
-                        }`}
-                        style={{ backgroundColor: c }}
+                        key={col}
+                        onClick={() => handleColorChange(col)}
+                        className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 ${coverColor === col ? "border-gray-800" : "border-transparent"}`}
+                        style={{ backgroundColor: col }}
                       />
                     ))}
                   </div>
                 )}
-                {/* Аватар выступает из баннера вниз — z-10 чтобы быть поверх */}
-                <div className="absolute -bottom-8 left-6 z-10">
+                {/* Аватар — торчит вниз из обложки */}
+                <div className="absolute -bottom-8 left-6">
                   <div className="w-16 h-16 rounded-xl border-4 border-white overflow-hidden bg-[#00205C] text-white text-xl font-black flex items-center justify-center shadow">
                     {user.avatar ? (
                       <img
@@ -339,9 +333,7 @@ const OwnProfile = () => {
                 </div>
               </div>
 
-              {/* Отступ сверху = высота половины аватара чтобы не перекрывать */}
               <div className="px-6 pb-6 pt-10">
-                <div className="mb-3" />
                 <h1 className="text-lg font-black text-black mb-0.5">
                   {fullName}
                 </h1>

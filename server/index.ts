@@ -50,12 +50,9 @@ const adminMiddleware = (req: any, res: any, next: any) => {
 
 const teacherMiddleware = (req: any, res: any, next: any) => {
   if (!["admin", "teacher"].includes(req.user?.role))
-    return res
-      .status(403)
-      .json({
-        error:
-          "Доступ запрещён: требуется роль преподавателя или администратора",
-      });
+    return res.status(403).json({
+      error: "Доступ запрещён: требуется роль преподавателя или администратора",
+    });
   next();
 };
 
@@ -105,6 +102,11 @@ app.post("/api/login", async (req: any, res: any) => {
         surname: user.surname,
         role: user.role,
         avatar: user.avatar,
+        bio: (user as any).bio,
+        github: (user as any).github,
+        vk: (user as any).vk,
+        telegram: (user as any).telegram,
+        coverColor: (user as any).coverColor,
       },
     });
   } catch (error) {
@@ -112,12 +114,57 @@ app.post("/api/login", async (req: any, res: any) => {
   }
 });
 
+// Публичный профиль пользователя
+app.get("/api/profile/:id", async (req: any, res: any) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: Number(req.params.id) },
+      select: {
+        id: true,
+        name: true,
+        surname: true,
+        avatar: true,
+        role: true,
+        bio: true,
+        github: true,
+        vk: true,
+        telegram: true,
+        coverColor: true,
+        createdAt: true,
+        enrollments: {
+          where: { status: "completed" },
+          select: { course: { select: { title: true } } },
+        },
+      },
+    });
+    if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+    res.json(user);
+  } catch {
+    res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
 app.put("/api/profile", authMiddleware, async (req: any, res: any) => {
   try {
     const userId = req.user.userId; // берём из токена, а не из тела
-    const { name, surname, password, avatar } = req.body;
+    const {
+      name,
+      surname,
+      password,
+      avatar,
+      bio,
+      github,
+      vk,
+      telegram,
+      coverColor,
+    } = req.body;
     const updateData: any = { name, surname };
     if (avatar !== undefined) updateData.avatar = avatar;
+    if (bio !== undefined) updateData.bio = bio;
+    if (github !== undefined) updateData.github = github;
+    if (vk !== undefined) updateData.vk = vk;
+    if (telegram !== undefined) updateData.telegram = telegram;
+    if (coverColor !== undefined) updateData.coverColor = coverColor;
     if (password && password.trim() !== "")
       updateData.password = await bcrypt.hash(password, 10);
     const updatedUser = await prisma.user.update({
@@ -131,6 +178,11 @@ app.put("/api/profile", authMiddleware, async (req: any, res: any) => {
       surname: updatedUser.surname,
       role: updatedUser.role,
       avatar: updatedUser.avatar,
+      bio: (updatedUser as any).bio,
+      github: (updatedUser as any).github,
+      vk: (updatedUser as any).vk,
+      telegram: (updatedUser as any).telegram,
+      coverColor: (updatedUser as any).coverColor,
     });
   } catch (error) {
     res.status(500).json({ error: "Не удалось обновить профиль" });
