@@ -98,19 +98,23 @@ const PublicProfile = ({ userId }: { userId: number }) => {
           <div
             className="h-32 relative"
             style={{ backgroundColor: coverColor }}
-          />
-          <div className="px-6 pb-6 -mt-10">
-            <div className="w-20 h-20 rounded-2xl border-4 border-white overflow-hidden bg-[#00205C] text-white text-2xl font-black flex items-center justify-center shadow mb-3">
-              {profile.avatar ? (
-                <img
-                  src={profile.avatar}
-                  alt="avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                initials
-              )}
+          >
+            {/* Аватар — торчит вниз из обложки */}
+            <div className="absolute -bottom-10 left-6">
+              <div className="w-20 h-20 rounded-2xl border-4 border-white overflow-hidden bg-[#00205C] text-white text-2xl font-black flex items-center justify-center shadow">
+                {profile.avatar ? (
+                  <img
+                    src={profile.avatar}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
+              </div>
             </div>
+          </div>
+          <div className="px-6 pb-6 pt-14">
             <div className="flex items-start justify-between flex-wrap gap-3">
               <div>
                 <h1 className="text-2xl font-black text-black">{fullName}</h1>
@@ -194,7 +198,7 @@ export const ProfilePage = () => {
   const { id } = useParams<{ id?: string }>();
   const userData = localStorage.getItem("user");
   const user = userData ? JSON.parse(userData) : null;
-  if (id && Number(id) !== Number(user?.id))
+  if (id && Number(id) !== user?.id)
     return <PublicProfile userId={Number(id)} />;
   return <OwnProfile />;
 };
